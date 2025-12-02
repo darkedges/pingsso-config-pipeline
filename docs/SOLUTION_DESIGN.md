@@ -66,43 +66,38 @@ The PingSSO Self-Service Onboarding Pipeline is an Infrastructure-as-Code (IaC) 
 
 ### 2.1 High-Level Context Diagram
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                        GitHub Repository                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │   teams/     │  │   modules/   │  │  .github/workflows/  │   │
-│  │ (Team Configs)  │ (TF Modules) │  │  (CI/CD Pipeline)    │   │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
-└────────────┬────────────────────────────────────┬───────────────┘
-             │                                     │
-             │ Pull Request                        │ Push to main
-             ▼                                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    GitHub Actions Runner                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │  Terraform   │  │     OPA      │  │   Terraform Apply    │   │
-│  │  Validation  │  │ Policy Check │  │  (Auto-approve)      │   │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
-└────────────┬────────────────────────────────────┬───────────────┘
-             │                                    │
-             │ Plan Comments                      │ API Calls
-             ▼                                    ▼
-┌──────────────────────┐              ┌─────────────────────────┐
-│   Pull Request UI    │              │   PingFederate Admin    │
-│  (Review & Approve)  │              │         API             │
-└──────────────────────┘              └────────────┬────────────┘
-                                                   │
-                                                   ▼
-                                      ┌─────────────────────────┐
-                                      │  OAuth Clients /        │
-                                      │  SAML Connections       │
-                                      └─────────────────────────┘
-
-External Dependencies:
-┌──────────────┐    ┌──────────────┐    ┌──────────────────────┐
-│   AWS S3     │    │  IDP Adapter │    │  Application Teams   │
-│ (TF State)   │    │  (LDAP/AD)   │    │  (Consumers)         │
-└──────────────┘    └──────────────┘    └──────────────────────┘
+```mermaid
+flowchart TB
+    subgraph GitHub["GitHub Repository"]
+        Teams["teams/<br/>(Team Configs)"]
+        Modules["modules/<br/>(TF Modules)"]
+        Workflows[".github/workflows/<br/>(CI/CD Pipeline)"]
+    end
+    
+    subgraph Actions["GitHub Actions Runner"]
+        TFValidate["Terraform<br/>Validation"]
+        OPA["OPA<br/>Policy Check"]
+        TFApply["Terraform Apply<br/>(Auto-approve)"]
+    end
+    
+    PR["Pull Request UI<br/>(Review & Approve)"]
+    PF["PingFederate<br/>Admin API"]
+    SSO["OAuth Clients /<br/>SAML Connections"]
+    
+    subgraph External["External Dependencies"]
+        S3["AWS S3<br/>(TF State)"]
+        IDP["IDP Adapter<br/>(LDAP/AD)"]
+        AppTeams["Application Teams<br/>(Consumers)"]
+    end
+    
+    GitHub -->|Pull Request| Actions
+    GitHub -->|Push to main| Actions
+    Actions -->|Plan Comments| PR
+    Actions -->|API Calls| PF
+    PF --> SSO
+    Actions -.->|State| S3
+    PF -.->|Auth Source| IDP
+    SSO -.->|Used by| AppTeams
 ```
 
 ### 2.2 Component Design
@@ -212,48 +207,47 @@ teams/
 
 ### 3.1 Data Flow
 
-```text
-┌─────────────────┐
-│ Application Team│
-│  Creates .tf    │
-│     File        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│  Git Commit → Branch → Pull Request                 │
-└────────┬────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│  GitHub Actions Triggered (validate-and-plan)       │
-│  1. Terraform Plan (binary)                         │
-│  2. Convert to JSON                                 │
-│  3. OPA Evaluate (tfplan.json + policies/*.rego)    │
-└────────┬────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│  Decision Point:                                    │
-│  ✅ Pass → Comment plan, allow merge               │
-│  ❌ Fail → Block PR, show violations               │
-└────────┬────────────────────────────────────────────┘
-         │ (On merge to main)
-         ▼
-┌─────────────────────────────────────────────────────┐
-│  GitHub Actions (apply-changes)                     │
-│  1. Terraform Apply                                 │
-│  2. API calls to PingFederate                       │
-│  3. Create/Update OAuth client or SAML SP           │
-└────────┬────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────┐
-│  PingFederate Database                              │
-│  - OAuth client stored                              │
-│  - SAML connection stored                           │
-│  - Terraform state updated in S3                    │
-└─────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant Dev as Application Team
+    participant Git as Git Repository
+    participant GHA as GitHub Actions
+    participant OPA as OPA Engine
+    participant PR as Pull Request
+    participant TF as Terraform
+    participant PF as PingFederate API
+    participant S3 as AWS S3
+    
+    Dev->>Git: Create .tf file<br/>Commit → Branch → PR
+    Git->>GHA: Trigger validate-and-plan
+    
+    activate GHA
+    GHA->>TF: terraform plan
+    TF-->>GHA: Binary plan
+    GHA->>GHA: Convert to JSON
+    GHA->>OPA: Evaluate policies
+    OPA-->>GHA: Violations (if any)
+    
+    alt Policy Passed
+        GHA->>PR: Comment plan ✅
+        PR->>PR: Allow merge
+    else Policy Failed
+        GHA->>PR: Show violations ❌
+        PR->>PR: Block merge
+    end
+    deactivate GHA
+    
+    PR->>Git: Merge to main
+    Git->>GHA: Trigger apply-changes
+    
+    activate GHA
+    GHA->>TF: terraform apply
+    TF->>PF: API calls (create/update)
+    PF-->>TF: Success response
+    TF->>S3: Update state file
+    deactivate GHA
+    
+    Note over PF: OAuth client or<br/>SAML connection<br/>stored in database
 ```
 
 ### 3.2 Data Schema
