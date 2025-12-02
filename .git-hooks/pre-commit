@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Pre-commit hook to run Terraform formatting and validation
+# Install by running: ln -s ../../.git-hooks/pre-commit .git/hooks/pre-commit
+
+set -e
+
+echo "Running Terraform formatting..."
+terraform fmt -recursive .
+
+echo "Running Terraform validation..."
+cd platform
+terraform init -backend=false
+terraform validate
+cd ..
+
+echo "Running OPA policy tests..."
+if command -v opa &> /dev/null; then
+    opa test policies/
+else
+    echo "⚠️  OPA not installed. Skipping policy tests."
+    echo "   Install from: https://www.openpolicyagent.org/docs/latest/#running-opa"
+fi
+
+echo "✅ Pre-commit checks passed!"

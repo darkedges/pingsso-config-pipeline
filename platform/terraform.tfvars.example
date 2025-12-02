@@ -1,0 +1,11 @@
+# Copy this file to terraform.tfvars and fill in your values
+# WARNING: Never commit terraform.tfvars to version control!
+
+# PingFederate Configuration
+pingfederate_base_url = "https://pingfederate.example.com"
+pingfederate_username = "api-admin"
+pingfederate_password = "CHANGEME"
+
+# Security Settings
+# Set to true ONLY for dev/test environments with self-signed certs
+insecure_tls = false

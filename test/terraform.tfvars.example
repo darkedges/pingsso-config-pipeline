@@ -1,0 +1,8 @@
+# Test configuration - copy this to terraform.tfvars and fill in your values
+pf_admin_username  = "Administrator"
+pf_admin_password  = "2FederateM0re"
+pf_admin_base_url  = "https://pfconsole.example.com"
+pf_admin_context   = "/pf-admin-api/v1"
+pf_provider_trust_all_tls = false  # Set to true for dev environments with self-signed certs
+pf_provider_bypass_external_validation_header = false
+pf_provider_product_version = "12.3"
