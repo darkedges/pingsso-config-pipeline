@@ -1,15 +1,15 @@
-# 🚀 PingSSO Self-Service Onboarding
+# PingSSO Self-Service Onboarding
 
 Welcome! This repository allows application teams to onboard their applications to **PingFederate** using Terraform. By defining your configuration here, you ensure your app is deployed securely, consistently, and automatically.
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 .
 ├── modules/               # Shared Terraform logic (Do not edit)
 ├── policies/              # Security Guardrails (OPA Policies)
 ├── platform/              # Main Terraform execution (Admins only)
-└── teams/                 # 👈 YOUR WORKSPACE
+└── teams/                 # YOUR WORKSPACE
     ├── marketing/         # Team Directory
     │   └── my-app.tf      # App Configurations
     └── engineering/
@@ -20,7 +20,7 @@ Welcome! This repository allows application teams to onboard their applications 
 1. Create your fileNavigate to `teams/<your-team-name>/` and create a new file named `<your-app-name>.tf`.
 1. Add the Module BlockCopy one of the templates below into your new file.
 
-## 🅰️ Option A: OIDC App (Modern Web/Mobile)
+## Option A: OIDC App (Modern Web/Mobile)
 
 Use this for Single Page Apps (React/Angular), Mobile Apps, or APIs.
 
@@ -50,7 +50,7 @@ module "my_oidc_app" {
 }
 ```
 
-## 🅱️ Option B: SAML App (Legacy/SaaS)
+## Option B: SAML App (Legacy/SaaS)
 
 Use this for vendors like Salesforce, Zoom, or legacy internal apps.
 
@@ -82,7 +82,7 @@ module "my_saml_app" {
    2. Check for security violations (OPA).
    3. Plan the changes.
 
-## 🛡 Security Guardrails
+## Security Guardrails
 
 To prevent build failures, ensure you follow these rules:
 
@@ -114,7 +114,7 @@ Set in Settings → Secrets and variables → Actions → Variables:
 - `PF_PROVIDER_BYPASS_EXTERNAL_VALIDATION_HEADER` - Bypass validation (default: `false`)
 - `PF_PROVIDER_PRODUCT_VERSION` - PingFederate version (e.g., `12.3`)
 
-## ❓ Troubleshooting
+## Troubleshooting
 
 Error: `OPA Policy Violation`
 
