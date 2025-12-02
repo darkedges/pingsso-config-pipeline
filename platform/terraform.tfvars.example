@@ -8,4 +8,4 @@ pingfederate_password = "CHANGEME"
 
 # Security Settings
 # Set to true ONLY for dev/test environments with self-signed certs
-insecure_tls = false
+insecure_tls          = false
