@@ -7,13 +7,23 @@ on:
     branches: [ "main" ]
 
 env:
-  # Configuration for where Terraform stores its state (e.g., AWS S3)
-  # You will need to set these as Secrets in your GitHub Repo settings
+  # AWS Credentials for S3 backend (Secrets)
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  TF_VAR_pingfederate_base_url: ${{ secrets.PF_BASE_URL }}
-  TF_VAR_pingfederate_username: ${{ secrets.PF_USERNAME }}
-  TF_VAR_pingfederate_password: ${{ secrets.PF_PASSWORD }}
+  
+  # AWS Configuration (Environment Variables)
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  
+  # PingFederate Credentials (Secrets)
+  TF_VAR_pf_admin_username: ${{ secrets.PF_ADMIN_USERNAME }}
+  TF_VAR_pf_admin_password: ${{ secrets.PF_ADMIN_PASSWORD }}
+  
+  # PingFederate Configuration (Environment Variables)
+  TF_VAR_pf_admin_base_url: ${{ vars.PF_ADMIN_BASE_URL }}
+  TF_VAR_pf_admin_context: ${{ vars.PF_ADMIN_CONTEXT }}
+  TF_VAR_pf_provider_trust_all_tls: ${{ vars.PF_PROVIDER_TRUST_ALL_TLS }}
+  TF_VAR_pf_provider_bypass_external_validation_header: ${{ vars.PF_PROVIDER_BYPASS_EXTERNAL_VALIDATION_HEADER }}
+  TF_VAR_pf_provider_product_version: ${{ vars.PF_PROVIDER_PRODUCT_VERSION }}
 
 jobs:
   # JOB 1: VALIDATION & SECURITY SCAN

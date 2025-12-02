@@ -73,13 +73,23 @@ terraform apply
 
 ### GitHub Actions Secrets Required
 
-Set these in your repository settings (Settings → Secrets):
+Set these in your repository settings (Settings → Secrets and variables → Actions → Secrets):
 
-- `AWS_ACCESS_KEY_ID` - For S3 backend access
-- `AWS_SECRET_ACCESS_KEY` - For S3 backend access
-- `PINGFEDERATE_BASE_URL` - Your PingFederate URL
-- `PINGFEDERATE_USERNAME` - API admin username
-- `PINGFEDERATE_PASSWORD` - API admin password
+- `AWS_ACCESS_KEY_ID` - AWS access key for S3 backend
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key for S3 backend
+- `PF_ADMIN_USERNAME` - PingFederate API admin username
+- `PF_ADMIN_PASSWORD` - PingFederate API admin password
+
+### GitHub Actions Variables Required
+
+Set these in your repository settings (Settings → Secrets and variables → Actions → Variables):
+
+- `AWS_REGION` - AWS region for S3 backend (e.g., `us-east-1`)
+- `PF_ADMIN_BASE_URL` - PingFederate base URL (e.g., `https://pingfederate.example.com:9999`)
+- `PF_ADMIN_CONTEXT` - PingFederate admin API path (default: `/pf-admin-api/v1`)
+- `PF_PROVIDER_TRUST_ALL_TLS` - Trust all TLS certificates (default: `false`)
+- `PF_PROVIDER_BYPASS_EXTERNAL_VALIDATION_HEADER` - Bypass external validation (default: `false`)
+- `PF_PROVIDER_PRODUCT_VERSION` - PingFederate version (e.g., `12.3`)
 
 ### Enable Pre-commit Hooks (Optional)
 

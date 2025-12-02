@@ -92,6 +92,28 @@ To prevent build failures, ensure you follow these rules:
 | No Localhost   | localhost and 127.0.0.1 are blocked. Use the Dev tenant for local testing. |
 | Valid Protocol | Protocol must be exactly "SAML" or "OIDC".                                 |
 
+## 🔧 CI/CD Configuration (Admin Only)
+
+### Required GitHub Secrets
+
+Set in Settings → Secrets and variables → Actions → Secrets:
+
+- `AWS_ACCESS_KEY_ID` - AWS access key for S3 backend
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key for S3 backend
+- `PF_ADMIN_USERNAME` - PingFederate admin username
+- `PF_ADMIN_PASSWORD` - PingFederate admin password
+
+### Required GitHub Variables
+
+Set in Settings → Secrets and variables → Actions → Variables:
+
+- `AWS_REGION` - AWS region (e.g., `us-east-1`)
+- `PF_ADMIN_BASE_URL` - PingFederate URL (e.g., `https://pingfederate.example.com:9999`)
+- `PF_ADMIN_CONTEXT` - API path (default: `/pf-admin-api/v1`)
+- `PF_PROVIDER_TRUST_ALL_TLS` - Trust all TLS (default: `false`)
+- `PF_PROVIDER_BYPASS_EXTERNAL_VALIDATION_HEADER` - Bypass validation (default: `false`)
+- `PF_PROVIDER_PRODUCT_VERSION` - PingFederate version (e.g., `12.3`)
+
 ## ❓ Troubleshooting
 
 Error: `OPA Policy Violation`
