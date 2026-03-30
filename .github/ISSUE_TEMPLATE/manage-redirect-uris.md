@@ -11,56 +11,63 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this Manage Redirect URI request
+        Thanks for taking the time to fill out this bug report!
   - type: input
-    id: team_name
+    id: contact
     attributes:
-      label: Team Name
-      placeholder: e.g., Cloud-Platform-Team
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
     validations:
       required: true
-  - type: input
-    id: app_name
+  - type: dropdown
+    id: version
     attributes:
-      label: Application Name
-      placeholder: e.g., customer-portal-api
+      label: Version
+      description: What version of our software are you running?
+      options:
+        - 1.0.2 (Default)
+        - 1.0.3 (Edge)
+      default: 0
     validations:
       required: true
-  - type: textarea
-    id: dev_redirect_uris
+  - type: dropdown
+    id: browsers
     attributes:
-      label: Development Redirect URIs
-      description: List one URI per line for the DEV environment.
-      placeholder: |
-        http://localhost:3000/callback
-        https://dev.myapp.com/callback
-    validations:
-      required: false
+      label: What browsers are you seeing the problem on?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
   - type: textarea
-    id: test_redirect_uris
+    id: logs
     attributes:
-      label: Test Redirect URIs
-      description: List one URI per line for the TEST environment.
-    validations:
-      required: false
-  - type: textarea
-    id: stage_redirect_uris
-    attributes:
-      label: Staging Redirect URIs
-      description: List one URI per line for the STAGE environment.
-    validations:
-      required: false
-  - type: textarea
-    id: prod_redirect_uris
-    attributes:
-      label: Production Redirect URIs
-      description: List one URI per line for the PROD environment.
-    validations:
-      required: false
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
   - type: checkboxes
     id: terms
     attributes:
-      label: Security Confirmation
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com).
       options:
-        - label: I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
+        - label: I agree to follow this project's Code of Conduct
           required: true
+  - type: upload
+    id: screenshots
+    attributes:
+      label: Upload screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
