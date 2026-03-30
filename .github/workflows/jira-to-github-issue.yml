@@ -7,49 +7,55 @@ jobs:
   create-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Create GitHub Issue
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          TEAM: ${{ github.event.client_payload.fields.team_name }}
-          APP: ${{ github.event.client_payload.fields.app_name }}
-          APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
-          DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
-          TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
-          STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
-          PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
-          JIRA_URL: ${{ github.event.client_payload.jsm_url }}
-          ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
-          REPORTER: ${{ github.event.client_payload.reporter }}
-          SUMMARY: ${{ github.event.client_payload.summary }}
-        run: |
-          gh issue create \
-            --repo darkedges/pingsso-config-pipeline \
-            --title "[Manage Redirect URI]: $APP ($TEAM)" \
-            --label "redirect-uris,automated-request" \
-            --body "### JIRA Ticket URL
-          $JIRA_URL
-          ### Team Name
-          $TEAM
-          ### Application Name
-          $APP
-          ### Application Type
-          $APP_TYPE
-          ### Development Redirect URIs
-          \`\`\`
-          ${DEV:-None provided}
-          \`\`\`
-          ### Test Redirect URIs
-          \`\`\`
-          ${TEST:-None provided}
-          \`\`\`
-          ### Staging Redirect URIs
-          \`\`\`
-          ${STAGE:-None provided}
-          \`\`\`
-          ### Production Redirect URIs
-          \`\`\`
-          ${PROD:-None provided}
-          \`\`\`
-          ### Security Confirmation
-          - [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
-          "
+    - name: Create GitHub Issue
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { team, app, appType, dev, test, stage, prod, jiraUrl, reporter } = {
+            team:    '${{ github.event.client_payload.fields.team_name }}',
+            app:     '${{ github.event.client_payload.fields.app_name }}',
+            appType: '${{ github.event.client_payload.fields.app_type }}',
+            dev:     '${{ github.event.client_payload.fields.dev_redirect_uris }}',
+            test:    '${{ github.event.client_payload.fields.test_redirect_uris }}',
+            stage:   '${{ github.event.client_payload.fields.stage_redirect_uris }}',
+            prod:    '${{ github.event.client_payload.fields.prod_redirect_uris }}',
+            jiraUrl: '${{ github.event.client_payload.jsm_url }}',
+            reporter:'${{ github.event.client_payload.reporter }}',
+          };
+    
+          const body = `
+### JIRA Ticket URL
+${jiraUrl}
+### Team Name
+${team}
+### Application Name
+${app}
+### Application Type
+${appType}
+### Development Redirect URIs
+\`\`\`
+${dev || 'None provided'}
+\`\`\`
+### Test Redirect URIs
+\`\`\`
+${test || 'None provided'}
+\`\`\`
+### Staging Redirect URIs
+\`\`\`
+${stage || 'None provided'}
+\`\`\`
+### Production Redirect URIs
+\`\`\`
+${prod || 'None provided'}
+\`\`\`
+### Security Confirmation
+- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
+      `.trim();
+
+      await github.rest.issues.create({
+        owner: context.repo.owner,
+        repo:  context.repo.repo,
+        title: `[Manage Redirect URI]: ${app} (${team})`,
+        labels: ['redirect-uris', 'automated-request'],
+        body,
+      });
