@@ -235,7 +235,9 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.AUTOMATION_GH_TOKEN || github.token }}
+          # AUTOMATION_GH_TOKEN must be a PAT from a bot/service account.
+          # It cannot be github.token — the PR creator and approver must be different actors.
+          token: ${{ secrets.AUTOMATION_GH_TOKEN }}
           commit-message: "chore(terraform): apply JSM request #${{ steps.parse.outputs.issue_number }}"
           branch: ${{ steps.parse.outputs.branch_name }}
           title: "Automated Terraform change for JSM request #${{ steps.parse.outputs.issue_number }}"
@@ -259,8 +261,9 @@ jobs:
         if: steps.cpr.outputs.pull-request-number != ''
         uses: hmarr/auto-approve-action@v4
         with:
-          # Uses GITHUB_TOKEN (Actions bot) to approve a PR created by AUTOMATION_GH_TOKEN.
-          # A PR author cannot approve their own PR, so these must be different actors.
+          # GITHUB_TOKEN (github-actions[bot]) approves the PR.
+          # AUTOMATION_GH_TOKEN (a separate bot account) created the PR.
+          # These must be different actors — GitHub prevents self-approval.
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
 
@@ -268,7 +271,7 @@ jobs:
         if: steps.cpr.outputs.pull-request-number != ''
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
-          token: ${{ secrets.AUTOMATION_GH_TOKEN || github.token }}
+          token: ${{ secrets.AUTOMATION_GH_TOKEN }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           merge-method: squash
 

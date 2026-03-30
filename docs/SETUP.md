@@ -80,6 +80,16 @@ Set these in your repository settings (Settings → Secrets and variables → Ac
 - `PF_ADMIN_USERNAME` - PingFederate API admin username
 - `PF_ADMIN_PASSWORD` - PingFederate API admin password
 
+Required for JSM-to-Terraform PR automation:
+
+- `AUTOMATION_GH_TOKEN` - Personal Access Token (classic) with `repo` scope, created under a **dedicated bot/service account** (not your personal account). This token creates the PR. The built-in `GITHUB_TOKEN` (github-actions[bot]) then approves it. Both tokens must belong to different actors — GitHub blocks self-approval, so using `GITHUB_TOKEN` for both creation and approval will fail with "Can not approve your own pull request".
+
+To create this token:
+1. Create (or use) a GitHub bot/service account separate from your personal account
+2. In that account: Settings → Developer settings → Personal access tokens → Tokens (classic)
+3. Generate a new token with `repo` scope
+4. Add it as a repository secret named `AUTOMATION_GH_TOKEN`: Settings → Secrets and variables → Actions → Secrets
+
 Optional for Jira callback automation:
 
 - `JIRA_USER_EMAIL` - Jira automation user email for API authentication
