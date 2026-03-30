@@ -129,6 +129,7 @@ jobs:
             }
 
       - name: Create GitHub Issue
+        id: create_issue
         uses: actions/github-script@v7
         env:
           TEAM: ${{ github.event.client_payload.fields.team_name }}
@@ -147,6 +148,8 @@ jobs:
           SUMMARY: ${{ github.event.client_payload.summary }}
         with:
           script: |
+            const core = require('@actions/core');
+
             function normalizeListLike(value) {
               const cleanToken = (token) => String(token || '')
                 .trim()
@@ -244,10 +247,35 @@ jobs:
               '- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).',
             ].join('\n');
 
-            await github.rest.issues.create({
+            const created = await github.rest.issues.create({
               owner: context.repo.owner,
               repo:  context.repo.repo,
               title: '[Manage Redirect URI][' + issueKey + ']: ' + app + ' (' + team + ')',
               labels: ['redirect-uris', 'automated-request'],
               body,
+            });
+
+            core.setOutput('issue_number', String(created.data.number));
+
+      - name: Trigger Issue-to-PR Automation
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
+        with:
+          script: |
+            const core = require('@actions/core');
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+
+            if (!issueNumber) {
+              core.setFailed('Issue number output is missing; cannot dispatch issue-to-pr request.');
+              return;
+            }
+
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'issue-to-pr-request',
+              client_payload: {
+                issue_number: issueNumber,
+              },
             });

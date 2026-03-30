@@ -3,6 +3,8 @@ name: Issue to Terraform PR
 on:
   issues:
     types: [opened, labeled, edited]
+  repository_dispatch:
+    types: [issue-to-pr-request]
 
 permissions:
   contents: write
@@ -12,7 +14,7 @@ permissions:
 jobs:
   issue-to-pr:
     name: Generate Terraform Change PR
-    if: contains(github.event.issue.labels.*.name, 'automated-request')
+    if: github.event_name == 'repository_dispatch' || contains(github.event.issue.labels.*.name, 'automated-request')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -25,9 +27,34 @@ jobs:
           script: |
             const core = require('@actions/core');
 
-            const body = context.payload.issue.body || '';
-            const issueNumber = context.payload.issue.number;
-            const issueTitle = context.payload.issue.title || '';
+            let issue;
+            if (context.eventName === 'repository_dispatch') {
+              const dispatchedIssueNumber = Number(context.payload.client_payload?.issue_number || 0);
+              if (!dispatchedIssueNumber) {
+                core.setFailed('repository_dispatch missing client_payload.issue_number');
+                return;
+              }
+
+              const fetched = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: dispatchedIssueNumber,
+              });
+
+              issue = fetched.data;
+            } else {
+              issue = context.payload.issue;
+            }
+
+            const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name).filter(Boolean);
+            if (!labels.includes('automated-request')) {
+              core.setFailed('Issue does not have automated-request label; refusing to auto-generate PR.');
+              return;
+            }
+
+            const body = issue.body || '';
+            const issueNumber = issue.number;
+            const issueTitle = issue.title || '';
 
             function section(label) {
               const re = new RegExp(`### ${label}\\n([\\s\\S]*?)(?=\\n### |$)`, 'm');
