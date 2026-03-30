@@ -1,7 +1,7 @@
 name: Create Issue from Jira Webhook
 on:
   repository_dispatch:
-    types: [jira-uri-request]
+    types: ["jira-uri-request"]
 
 jobs:
   create-issue:
