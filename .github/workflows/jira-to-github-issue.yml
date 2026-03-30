@@ -6,11 +6,11 @@ on:
 jobs:
   create-issue:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Create GitHub Issue
         uses: actions/github-script@v7
-        permissions:
-          contents: write # Grant write permission for this specific job
         env:
           TEAM: ${{ github.event.client_payload.fields.team_name }}
           APP: ${{ github.event.client_payload.fields.app_name }}
