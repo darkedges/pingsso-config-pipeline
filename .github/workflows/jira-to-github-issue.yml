@@ -148,8 +148,6 @@ jobs:
           SUMMARY: ${{ github.event.client_payload.summary }}
         with:
           script: |
-            const core = require('@actions/core');
-
             function normalizeListLike(value) {
               const cleanToken = (token) => String(token || '')
                 .trim()
@@ -263,7 +261,6 @@ jobs:
           ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
         with:
           script: |
-            const core = require('@actions/core');
             const issueNumber = Number(process.env.ISSUE_NUMBER);
 
             if (!issueNumber) {
