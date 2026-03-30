@@ -27,29 +27,29 @@ jobs:
             --title "[Manage Redirect URI]: $APP ($TEAM)" \
             --label "redirect-uris,automated-request" \
             --body "### JIRA Ticket URL
-            $JIRA_URL
-            ### Team Name
-            $TEAM
-            ### Application Name
-            $APP
-            ### Application Type
-            $APP_TYPE
-            ### Development Redirect URIs
-            ```
-            ${DEV:-None provided}
-            ```
-            ### Test Redirect URIs
-            ```
-            ${TEST:-None provided}
-            ```
-            ### Staging Redirect URIs
-            ```
-            ${STAGE:-None provided}
-            ```
-            ### Production Redirect URIs
-            ```
-            ${PROD:-None provided}
-            ```
-            ### Security Confirmation
-            - [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
-            "
+          $JIRA_URL
+          ### Team Name
+          $TEAM
+          ### Application Name
+          $APP
+          ### Application Type
+          $APP_TYPE
+          ### Development Redirect URIs
+          \`\`\`
+          ${DEV:-None provided}
+          \`\`\`
+          ### Test Redirect URIs
+          `\`\`\`
+          ${TEST:-None provided}
+          \`\`\`
+          ### Staging Redirect URIs
+          \`\`\`
+          ${STAGE:-None provided}
+          \`\`\`
+          ### Production Redirect URIs
+          \`\`\`
+          ${PROD:-None provided}
+          \`\`\`
+          ### Security Confirmation
+          - [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
+          "
