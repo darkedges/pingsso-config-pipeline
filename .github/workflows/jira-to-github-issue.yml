@@ -38,6 +38,7 @@ jobs:
                 .replace(/^\[+/, '')
                 .replace(/\]+$/, '')
                 .replace(/^"+|"+$/g, '')
+                .replace(/^[-*]\s+/, '')
                 .trim();
 
               if (value === undefined || value === null) {
@@ -152,6 +153,7 @@ jobs:
                 .replace(/^\[+/, '')
                 .replace(/\]+$/, '')
                 .replace(/^"+|"+$/g, '')
+                .replace(/^[-*]\s+/, '')
                 .trim();
 
               if (value === undefined || value === null) {
