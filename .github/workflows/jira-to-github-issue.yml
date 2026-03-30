@@ -18,7 +18,9 @@ jobs:
           STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
           PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
           JIRA_URL: ${{ github.event.client_payload.jsm_url }}
-          PAYLOAD: ${{ github.event.client_payload }}
+          ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
+          REPORTER: ${{ github.event.client_payload.reporter }}
+          SUMMARY: ${{ github.event.client_payload.summary }}
         run: env
   create-issue:
     runs-on: ubuntu-latest
