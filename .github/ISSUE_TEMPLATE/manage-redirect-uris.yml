@@ -1,6 +1,6 @@
 name: Redirect URI Request
 description: Request new or updated redirect URIs for an application.
-title: "[URI Request]: "
+title: "[Manage Redirect URI]: "
 labels: ["redirect-uris", "configuration"]
 body:
   - type: input
@@ -26,7 +26,6 @@ body:
       description: List one URI per line for the DEV environment.
       placeholder: |
         http://localhost:3000/callback
-        https://dev.myapp.com/callback
     validations:
       required: false
 
