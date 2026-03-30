@@ -371,6 +371,11 @@ Use this sample payload for Jira Automation when calling GitHub repository dispa
 
 1. Body template:
 
+Use `.value` for single-select dropdowns and a loop for multi-select values to avoid sending Jira option IDs.
+
+- Single-select dropdown pattern: `{{issue.customfield_12345.value}}`
+- Multi-select dropdown pattern: `{{#issue.customfield_12345}}{{value}}{{^last}},{{/}}{{/}}`
+
 ```json
 {
   "event_type": "jira-uri-request",
@@ -380,10 +385,10 @@ Use this sample payload for Jira Automation when calling GitHub repository dispa
     "summary": "{{issue.summary}}",
     "reporter": "{{issue.reporter.emailAddress}}",
     "fields": {
-      "team_name": "{{issue.customfield_team_name}}",
-      "app_name": "{{issue.customfield_app_name}}",
-      "app_type": "{{issue.customfield_app_type}}",
-      "oidc_grant_types": "{{issue.customfield_oidc_grant_types}}",
+      "team_name": "{{issue.customfield_team_name.value}}",
+      "app_name": "{{issue.customfield_app_name.value}}",
+      "app_type": "{{issue.customfield_app_type.value}}",
+      "oidc_grant_types": "{{#issue.customfield_oidc_grant_types}}{{value}}{{^last}},{{/}}{{/}}",
       "dev_redirect_uris": "{{issue.customfield_dev_redirect_uris}}",
       "test_redirect_uris": "{{issue.customfield_test_redirect_uris}}",
       "stage_redirect_uris": "{{issue.customfield_stage_redirect_uris}}",
@@ -408,10 +413,10 @@ Copy this JSON into Jira Automation after replacing each `CUSTOMFIELD_*` token w
     "summary": "{{issue.summary}}",
     "reporter": "{{issue.reporter.emailAddress}}",
     "fields": {
-      "team_name": "{{issue.customfield_CUSTOMFIELD_TEAM_NAME}}",
-      "app_name": "{{issue.customfield_CUSTOMFIELD_APP_NAME}}",
-      "app_type": "{{issue.customfield_CUSTOMFIELD_APP_TYPE}}",
-      "oidc_grant_types": "{{issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}",
+      "team_name": "{{issue.customfield_CUSTOMFIELD_TEAM_NAME.value}}",
+      "app_name": "{{issue.customfield_CUSTOMFIELD_APP_NAME.value}}",
+      "app_type": "{{issue.customfield_CUSTOMFIELD_APP_TYPE.value}}",
+      "oidc_grant_types": "{{#issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}{{value}}{{^last}},{{/}}{{/}}",
       "dev_redirect_uris": "{{issue.customfield_CUSTOMFIELD_DEV_REDIRECT_URIS}}",
       "test_redirect_uris": "{{issue.customfield_CUSTOMFIELD_TEST_REDIRECT_URIS}}",
       "stage_redirect_uris": "{{issue.customfield_CUSTOMFIELD_STAGE_REDIRECT_URIS}}",
@@ -425,4 +430,5 @@ Copy this JSON into Jira Automation after replacing each `CUSTOMFIELD_*` token w
 
 Example replacement:
 
-- `{{issue.customfield_CUSTOMFIELD_TEAM_NAME}}` becomes `{{issue.customfield_12345}}`
+- `{{issue.customfield_CUSTOMFIELD_TEAM_NAME.value}}` becomes `{{issue.customfield_12345.value}}`
+- `{{#issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}{{value}}{{^last}},{{/}}{{/}}` becomes `{{#issue.customfield_23456}}{{value}}{{^last}},{{/}}{{/}}`

@@ -208,7 +208,10 @@ Use this recipe in Jira Automation for your JSM request type.
 
 1. Web request body template
 
-Use Jira smart values mapped to your custom fields:
+Use Jira smart values mapped to your custom fields. For dropdown fields, use `.value` so the payload sends labels instead of option IDs.
+
+- Single-select dropdown pattern: `{{issue.customfield_12345.value}}`
+- Multi-select dropdown pattern (comma-separated labels): `{{#issue.customfield_12345}}{{value}}{{^last}},{{/}}{{/}}`
 
 ```json
 {
@@ -219,10 +222,10 @@ Use Jira smart values mapped to your custom fields:
       "summary": "{{issue.summary}}",
       "reporter": "{{issue.reporter.emailAddress}}",
       "fields": {
-         "team_name": "{{issue.customfield_team_name}}",
-         "app_name": "{{issue.customfield_app_name}}",
-         "app_type": "{{issue.customfield_app_type}}",
-         "oidc_grant_types": "{{issue.customfield_oidc_grant_types}}",
+         "team_name": "{{issue.customfield_team_name.value}}",
+         "app_name": "{{issue.customfield_app_name.value}}",
+         "app_type": "{{issue.customfield_app_type.value}}",
+         "oidc_grant_types": "{{#issue.customfield_oidc_grant_types}}{{value}}{{^last}},{{/}}{{/}}",
          "dev_redirect_uris": "{{issue.customfield_dev_redirect_uris}}",
          "test_redirect_uris": "{{issue.customfield_test_redirect_uris}}",
          "stage_redirect_uris": "{{issue.customfield_stage_redirect_uris}}",
@@ -277,10 +280,10 @@ Use this table to record your Jira field IDs and copy them directly into the aut
 
 | Payload Field Key | Jira Display Name | Example Smart Value | Actual Jira Field ID |
 | --- | --- | --- | --- |
-| `fields.team_name` | Team Name | `{{issue.customfield_team_name}}` | `customfield_` |
-| `fields.app_name` | Application Name | `{{issue.customfield_app_name}}` | `customfield_` |
-| `fields.app_type` | Application Type | `{{issue.customfield_app_type}}` | `customfield_` |
-| `fields.oidc_grant_types` | OIDC Grant Types | `{{issue.customfield_oidc_grant_types}}` | `customfield_` |
+| `fields.team_name` | Team Name | `{{issue.customfield_XXXXX.value}}` | `customfield_` |
+| `fields.app_name` | Application Name | `{{issue.customfield_XXXXX.value}}` | `customfield_` |
+| `fields.app_type` | Application Type | `{{issue.customfield_XXXXX.value}}` | `customfield_` |
+| `fields.oidc_grant_types` | OIDC Grant Types | `{{#issue.customfield_XXXXX}}{{value}}{{^last}},{{/}}{{/}}` | `customfield_` |
 | `fields.dev_redirect_uris` | Development Redirect URIs | `{{issue.customfield_dev_redirect_uris}}` | `customfield_` |
 | `fields.test_redirect_uris` | Test Redirect URIs | `{{issue.customfield_test_redirect_uris}}` | `customfield_` |
 | `fields.stage_redirect_uris` | Staging Redirect URIs | `{{issue.customfield_stage_redirect_uris}}` | `customfield_` |
@@ -301,10 +304,10 @@ Copy this JSON into Jira Automation after replacing each `CUSTOMFIELD_*` token w
       "summary": "{{issue.summary}}",
       "reporter": "{{issue.reporter.emailAddress}}",
       "fields": {
-         "team_name": "{{issue.customfield_CUSTOMFIELD_TEAM_NAME}}",
-         "app_name": "{{issue.customfield_CUSTOMFIELD_APP_NAME}}",
-         "app_type": "{{issue.customfield_CUSTOMFIELD_APP_TYPE}}",
-         "oidc_grant_types": "{{issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}",
+         "team_name": "{{issue.customfield_CUSTOMFIELD_TEAM_NAME.value}}",
+         "app_name": "{{issue.customfield_CUSTOMFIELD_APP_NAME.value}}",
+         "app_type": "{{issue.customfield_CUSTOMFIELD_APP_TYPE.value}}",
+         "oidc_grant_types": "{{#issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}{{value}}{{^last}},{{/}}{{/}}",
          "dev_redirect_uris": "{{issue.customfield_CUSTOMFIELD_DEV_REDIRECT_URIS}}",
          "test_redirect_uris": "{{issue.customfield_CUSTOMFIELD_TEST_REDIRECT_URIS}}",
          "stage_redirect_uris": "{{issue.customfield_CUSTOMFIELD_STAGE_REDIRECT_URIS}}",
@@ -318,7 +321,8 @@ Copy this JSON into Jira Automation after replacing each `CUSTOMFIELD_*` token w
 
 Example replacement:
 
-- `{{issue.customfield_CUSTOMFIELD_TEAM_NAME}}` becomes `{{issue.customfield_12345}}`
+- `{{issue.customfield_CUSTOMFIELD_TEAM_NAME.value}}` becomes `{{issue.customfield_12345.value}}`
+- `{{#issue.customfield_CUSTOMFIELD_OIDC_GRANT_TYPES}}{{value}}{{^last}},{{/}}{{/}}` becomes `{{#issue.customfield_23456}}{{value}}{{^last}},{{/}}{{/}}`
 
 ### Enable Pre-commit Hooks (Optional)
 
