@@ -71,6 +71,35 @@ body:
     validations:
       required: false
 
+  - type: input
+    id: saml_entity_id
+    attributes:
+      label: SAML Entity ID
+      description: Required when Application Type is SAML.
+      placeholder: e.g., https://sp.vendor.com/saml2
+    validations:
+      required: false
+
+  - type: input
+    id: saml_acs_url
+    attributes:
+      label: SAML ACS URL
+      description: Required when Application Type is SAML. Must be HTTPS.
+      placeholder: e.g., https://sp.vendor.com/sso/consume
+    validations:
+      required: false
+
+  - type: textarea
+    id: oidc_grant_types
+    attributes:
+      label: OIDC Grant Types
+      description: Required when Application Type is OIDC. One value per line.
+      placeholder: |
+        AUTHORIZATION_CODE
+        REFRESH_TOKEN
+    validations:
+      required: false
+
   - type: checkboxes
     id: terms
     attributes:

@@ -10,12 +10,80 @@ jobs:
       contents: read
       issues: write
     steps:
+      - name: Validate Jira Payload Schema
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const payload = context.payload.client_payload || {};
+            const fields = payload.fields || {};
+
+            const required = [
+              ['issue_key', payload.issue_key],
+              ['jsm_url', payload.jsm_url],
+              ['summary', payload.summary],
+              ['reporter', payload.reporter],
+              ['fields.team_name', fields.team_name],
+              ['fields.app_name', fields.app_name],
+              ['fields.app_type', fields.app_type],
+            ];
+
+            const missing = required
+              .filter(([, value]) => value === undefined || value === null || String(value).trim() === '')
+              .map(([name]) => name);
+
+            const appType = String(fields.app_type || '').trim().toUpperCase();
+            const isOidc = appType.includes('OIDC') || appType.includes('OAUTH');
+            const isSaml = appType === 'SAML';
+
+            if (!isOidc && !isSaml) {
+              missing.push('fields.app_type(valid values: SAML or OIDC/OAuth2)');
+            }
+
+            if (isOidc) {
+              const envUris = [
+                fields.dev_redirect_uris,
+                fields.test_redirect_uris,
+                fields.stage_redirect_uris,
+                fields.prod_redirect_uris,
+              ]
+                .map(v => String(v || '').trim())
+                .filter(Boolean);
+
+              if (envUris.length === 0) {
+                missing.push('OIDC redirect URIs (at least one of dev/test/stage/prod)');
+              }
+
+              const grantTypesRaw = String(fields.oidc_grant_types || '').trim();
+              if (!grantTypesRaw) {
+                missing.push('fields.oidc_grant_types');
+              }
+            }
+
+            if (isSaml) {
+              if (!String(fields.saml_entity_id || '').trim()) {
+                missing.push('fields.saml_entity_id');
+              }
+              const samlAcs = String(fields.saml_acs_url || '').trim();
+              if (!samlAcs) {
+                missing.push('fields.saml_acs_url');
+              } else if (!samlAcs.startsWith('https://')) {
+                missing.push('fields.saml_acs_url(must start with https://)');
+              }
+            }
+
+            if (missing.length > 0) {
+              core.setFailed(`Jira webhook payload validation failed. Missing/invalid fields: ${missing.join(', ')}`);
+            }
+
       - name: Create GitHub Issue
         uses: actions/github-script@v7
         env:
           TEAM: ${{ github.event.client_payload.fields.team_name }}
           APP: ${{ github.event.client_payload.fields.app_name }}
           APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
+          SAML_ENTITY_ID: ${{ github.event.client_payload.fields.saml_entity_id }}
+          SAML_ACS_URL: ${{ github.event.client_payload.fields.saml_acs_url }}
+          OIDC_GRANT_TYPES: ${{ github.event.client_payload.fields.oidc_grant_types }}
           DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
           TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
           STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
@@ -29,21 +97,41 @@ jobs:
             const team    = process.env.TEAM;
             const app     = process.env.APP;
             const appType = process.env.APP_TYPE;
+            const samlEntityId = process.env.SAML_ENTITY_ID || 'None provided';
+            const samlAcsUrl = process.env.SAML_ACS_URL || 'None provided';
+            const oidcGrantTypes = process.env.OIDC_GRANT_TYPES || 'None provided';
             const dev     = process.env.DEV   || 'None provided';
             const test    = process.env.TEST  || 'None provided';
             const stage   = process.env.STAGE || 'None provided';
             const prod    = process.env.PROD  || 'None provided';
             const jiraUrl = process.env.JIRA_URL;
+            const issueKey = process.env.ISSUE_KEY || 'UNKNOWN';
+            const reporter = process.env.REPORTER || 'Unknown reporter';
+            const summary  = process.env.SUMMARY || 'No summary provided';
 
             const body = [
+              '### Jira Issue Key',
+              issueKey,
               '### JIRA Ticket URL',
               jiraUrl,
+              '### Jira Summary',
+              summary,
+              '### Reporter',
+              reporter,
               '### Team Name',
               team,
               '### Application Name',
               app,
               '### Application Type',
               appType,
+              '### OIDC Grant Types',
+              '```',
+              oidcGrantTypes,
+              '```',
+              '### SAML Entity ID',
+              samlEntityId,
+              '### SAML ACS URL',
+              samlAcsUrl,
               '### Development Redirect URIs',
               '```',
               dev,
@@ -67,7 +155,7 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo:  context.repo.repo,
-              title: '[Manage Redirect URI]: ' + app + ' (' + team + ')',
+              title: '[Manage Redirect URI][' + issueKey + ']: ' + app + ' (' + team + ')',
               labels: ['redirect-uris', 'automated-request'],
               body,
             });

@@ -1,0 +1,256 @@
+name: Issue to Terraform Dry Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_key:
+        description: Jira issue key
+        required: true
+        type: string
+      jsm_url:
+        description: Jira Service Management ticket URL
+        required: true
+        type: string
+      summary:
+        description: Request summary
+        required: true
+        type: string
+      reporter:
+        description: Request reporter
+        required: true
+        type: string
+      team_name:
+        description: Team name
+        required: true
+        type: string
+      app_name:
+        description: Application name
+        required: true
+        type: string
+      app_type:
+        description: Application protocol
+        required: true
+        type: choice
+        options:
+          - OIDC
+          - SAML
+      oidc_grant_types:
+        description: OIDC grant types (comma or newline separated)
+        required: false
+        type: string
+      saml_entity_id:
+        description: SAML entity ID (required for SAML)
+        required: false
+        type: string
+      saml_acs_url:
+        description: SAML ACS URL (required for SAML, must be HTTPS)
+        required: false
+        type: string
+      dev_redirect_uris:
+        description: DEV redirect URIs (comma or newline separated)
+        required: false
+        type: string
+      test_redirect_uris:
+        description: TEST redirect URIs (comma or newline separated)
+        required: false
+        type: string
+      stage_redirect_uris:
+        description: STAGE redirect URIs (comma or newline separated)
+        required: false
+        type: string
+      prod_redirect_uris:
+        description: PROD redirect URIs (comma or newline separated)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    name: Validate and Generate Terraform Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse Inputs and Build Terraform Preview
+        id: preview
+        uses: actions/github-script@v7
+        env:
+          ISSUE_KEY: ${{ inputs.issue_key }}
+          JSM_URL: ${{ inputs.jsm_url }}
+          SUMMARY: ${{ inputs.summary }}
+          REPORTER: ${{ inputs.reporter }}
+          TEAM_NAME: ${{ inputs.team_name }}
+          APP_NAME: ${{ inputs.app_name }}
+          APP_TYPE: ${{ inputs.app_type }}
+          OIDC_GRANT_TYPES: ${{ inputs.oidc_grant_types }}
+          SAML_ENTITY_ID: ${{ inputs.saml_entity_id }}
+          SAML_ACS_URL: ${{ inputs.saml_acs_url }}
+          DEV_URIS: ${{ inputs.dev_redirect_uris }}
+          TEST_URIS: ${{ inputs.test_redirect_uris }}
+          STAGE_URIS: ${{ inputs.stage_redirect_uris }}
+          PROD_URIS: ${{ inputs.prod_redirect_uris }}
+        with:
+          script: |
+            const core = require('@actions/core');
+
+            function splitList(value) {
+              const raw = String(value || '').trim();
+              if (!raw) return [];
+              return [...new Set(raw.split(/\r?\n|,/).map(v => v.trim()).filter(Boolean))];
+            }
+
+            function slugify(input) {
+              return (input || 'unknown')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 60) || 'unknown';
+            }
+
+            const issueKey = process.env.ISSUE_KEY;
+            const jsmUrl = process.env.JSM_URL;
+            const summary = process.env.SUMMARY;
+            const reporter = process.env.REPORTER;
+            const teamName = process.env.TEAM_NAME;
+            const appName = process.env.APP_NAME;
+            const appType = String(process.env.APP_TYPE || '').toUpperCase();
+
+            const grantTypes = splitList(process.env.OIDC_GRANT_TYPES);
+            const samlEntityId = String(process.env.SAML_ENTITY_ID || '').trim();
+            const samlAcsUrl = String(process.env.SAML_ACS_URL || '').trim();
+
+            const allUris = [...new Set([
+              ...splitList(process.env.DEV_URIS),
+              ...splitList(process.env.TEST_URIS),
+              ...splitList(process.env.STAGE_URIS),
+              ...splitList(process.env.PROD_URIS),
+            ])];
+
+            const missing = [];
+            if (!issueKey) missing.push('issue_key');
+            if (!jsmUrl) missing.push('jsm_url');
+            if (!summary) missing.push('summary');
+            if (!reporter) missing.push('reporter');
+            if (!teamName) missing.push('team_name');
+            if (!appName) missing.push('app_name');
+            if (!['OIDC', 'SAML'].includes(appType)) missing.push('app_type');
+
+            if (appType === 'OIDC') {
+              if (allUris.length === 0) missing.push('at least one redirect URI');
+              if (grantTypes.length === 0) missing.push('oidc_grant_types');
+            }
+
+            if (appType === 'SAML') {
+              if (!samlEntityId) missing.push('saml_entity_id');
+              if (!samlAcsUrl) missing.push('saml_acs_url');
+              if (samlAcsUrl && !samlAcsUrl.startsWith('https://')) {
+                missing.push('saml_acs_url must start with https://');
+              }
+            }
+
+            if (missing.length > 0) {
+              core.setFailed(`Dry run input validation failed: ${missing.join(', ')}`);
+              return;
+            }
+
+            const teamSlug = slugify(teamName);
+            const appSlug = slugify(appName);
+            const moduleName = `${appSlug}-${appType.toLowerCase()}`;
+            const filePath = `teams/${teamSlug}/${appSlug}.tf`;
+
+            let tfContent = '';
+
+            if (appType === 'SAML') {
+              tfContent = [
+                `module "${moduleName}" {`,
+                `  source = "../../modules/pingsso_application"`,
+                ``,
+                `  app_name = "${appName}"`,
+                `  protocol = "SAML"`,
+                ``,
+                `  saml_config = {`,
+                `    entity_id = "${samlEntityId}"`,
+                `    acs_url   = "${samlAcsUrl}"`,
+                `  }`,
+                ``,
+                `  attribute_mapping = {`,
+                `    email = "mail"`,
+                `    sub   = "uid"`,
+                `  }`,
+                ``,
+                `  tags = {`,
+                `    team            = "${teamName}"`,
+                `    jira_issue_key  = "${issueKey}"`,
+                `    jira_ticket_url = "${jsmUrl}"`,
+                `    source          = "jsm-automation"`,
+                `  }`,
+                `}`,
+              ].join('\n');
+            } else {
+              const redirectLines = allUris.map(u => `      "${u}",`).join('\n');
+              const grantLines = grantTypes.map(g => `      "${g}",`).join('\n');
+
+              tfContent = [
+                `module "${moduleName}" {`,
+                `  source = "../../modules/pingsso_application"`,
+                ``,
+                `  app_name = "${appName}"`,
+                `  protocol = "OIDC"`,
+                ``,
+                `  oidc_config = {`,
+                `    redirect_uris = [`,
+                redirectLines,
+                `    ]`,
+                `    grant_types = [`,
+                grantLines,
+                `    ]`,
+                `  }`,
+                ``,
+                `  attribute_mapping = {`,
+                `    email = "mail"`,
+                `    sub   = "uid"`,
+                `  }`,
+                ``,
+                `  tags = {`,
+                `    team            = "${teamName}"`,
+                `    jira_issue_key  = "${issueKey}"`,
+                `    jira_ticket_url = "${jsmUrl}"`,
+                `    source          = "jsm-automation"`,
+                `  }`,
+                `}`,
+              ].join('\n');
+            }
+
+            core.setOutput('file_path', filePath);
+            core.setOutput('tf_content', tfContent);
+
+      - name: Write Preview File
+        env:
+          PREVIEW_FILE_PATH: ${{ steps.preview.outputs.file_path }}
+          TF_CONTENT: ${{ steps.preview.outputs.tf_content }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "preview/$(dirname "$PREVIEW_FILE_PATH")"
+          printf "%s\n" "$TF_CONTENT" > "preview/$PREVIEW_FILE_PATH"
+
+      - name: Upload Preview Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-preview
+          path: preview/
+
+      - name: Print Dry Run Summary
+        env:
+          PREVIEW_FILE_PATH: ${{ steps.preview.outputs.file_path }}
+          TF_CONTENT: ${{ steps.preview.outputs.tf_content }}
+        run: |
+          {
+            echo "## Dry Run Successful"
+            echo
+            echo "Generated file path: $PREVIEW_FILE_PATH"
+            echo
+            echo "\`\`\`hcl"
+            echo "$TF_CONTENT"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"

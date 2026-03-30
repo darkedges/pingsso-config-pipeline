@@ -1,0 +1,256 @@
+name: Issue to Terraform PR
+
+on:
+  issues:
+    types: [opened, labeled, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  issue-to-pr:
+    name: Generate Terraform Change PR
+    if: contains(github.event.issue.labels.*.name, 'automated-request')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Parse Issue Request
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const core = require('@actions/core');
+
+            const body = context.payload.issue.body || '';
+            const issueNumber = context.payload.issue.number;
+            const issueTitle = context.payload.issue.title || '';
+
+            function section(label) {
+              const re = new RegExp(`### ${label}\\n([\\s\\S]*?)(?=\\n### |$)`, 'm');
+              const match = body.match(re);
+              return match ? match[1].trim() : '';
+            }
+
+            function normalizeBlock(value) {
+              if (!value) return '';
+              return value
+                .replace(/```/g, '')
+                .trim();
+            }
+
+            function parseUris(value) {
+              const cleaned = normalizeBlock(value);
+              if (!cleaned || cleaned.toLowerCase() === 'none provided') {
+                return [];
+              }
+              return [...new Set(
+                cleaned
+                  .split(/\r?\n|,/)
+                  .map(v => v.trim())
+                  .filter(Boolean)
+              )];
+            }
+
+            function slugify(input) {
+              return (input || 'unknown')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 60) || 'unknown';
+            }
+
+            const jiraKey = section('Jira Issue Key') || ((issueTitle.match(/\[([A-Z]+-\d+)\]/) || [])[1] || 'UNKNOWN');
+            const jiraUrl = section('JIRA Ticket URL');
+            const teamName = section('Team Name');
+            const appName = section('Application Name');
+            const appTypeRaw = section('Application Type');
+
+            const appType = /SAML/i.test(appTypeRaw) ? 'SAML' : 'OIDC';
+            const samlEntityId = normalizeBlock(section('SAML Entity ID'));
+            const samlAcsUrl = normalizeBlock(section('SAML ACS URL'));
+            const oidcGrantTypes = parseUris(section('OIDC Grant Types'));
+
+            const devUris = parseUris(section('Development Redirect URIs'));
+            const testUris = parseUris(section('Test Redirect URIs'));
+            const stageUris = parseUris(section('Staging Redirect URIs'));
+            const prodUris = parseUris(section('Production Redirect URIs'));
+            const allUris = [...new Set([...devUris, ...testUris, ...stageUris, ...prodUris])];
+
+            if (!teamName || !appName) {
+              core.setFailed('Issue body is missing Team Name or Application Name.');
+              return;
+            }
+
+            if (appType === 'OIDC' && allUris.length === 0) {
+              core.setFailed('OIDC request must include at least one redirect URI.');
+              return;
+            }
+
+            if (appType === 'OIDC' && oidcGrantTypes.length === 0) {
+              core.setFailed('OIDC request must include OIDC Grant Types.');
+              return;
+            }
+
+            if (appType === 'SAML') {
+              if (!samlEntityId || samlEntityId.toLowerCase() === 'none provided') {
+                core.setFailed('SAML request must include SAML Entity ID.');
+                return;
+              }
+              if (!samlAcsUrl || samlAcsUrl.toLowerCase() === 'none provided') {
+                core.setFailed('SAML request must include SAML ACS URL.');
+                return;
+              }
+            }
+
+            const teamSlug = slugify(teamName);
+            const appSlug = slugify(appName);
+            const moduleName = `${appSlug}-${appType.toLowerCase()}`;
+            const filePath = `teams/${teamSlug}/${appSlug}.tf`;
+            const branchName = `automation/jsm-${issueNumber}-${appSlug}`;
+
+            core.setOutput('jira_key', jiraKey);
+            core.setOutput('jira_url', jiraUrl);
+            core.setOutput('team_name', teamName);
+            core.setOutput('team_slug', teamSlug);
+            core.setOutput('app_name', appName);
+            core.setOutput('app_slug', appSlug);
+            core.setOutput('app_type', appType);
+            core.setOutput('module_name', moduleName);
+            core.setOutput('issue_number', String(issueNumber));
+            core.setOutput('file_path', filePath);
+            core.setOutput('branch_name', branchName);
+            core.setOutput('all_uris_json', JSON.stringify(allUris));
+            core.setOutput('grant_types_json', JSON.stringify(oidcGrantTypes));
+            core.setOutput('saml_entity_id', samlEntityId);
+            core.setOutput('saml_acs_url', samlAcsUrl);
+
+      - name: Generate Terraform File from Issue
+        env:
+          FILE_PATH: ${{ steps.parse.outputs.file_path }}
+          MODULE_NAME: ${{ steps.parse.outputs.module_name }}
+          APP_NAME: ${{ steps.parse.outputs.app_name }}
+          APP_TYPE: ${{ steps.parse.outputs.app_type }}
+          TEAM_NAME: ${{ steps.parse.outputs.team_name }}
+          JIRA_KEY: ${{ steps.parse.outputs.jira_key }}
+          JIRA_URL: ${{ steps.parse.outputs.jira_url }}
+          URIS_JSON: ${{ steps.parse.outputs.all_uris_json }}
+          GRANT_TYPES_JSON: ${{ steps.parse.outputs.grant_types_json }}
+          SAML_ENTITY_ID: ${{ steps.parse.outputs.saml_entity_id }}
+          SAML_ACS_URL: ${{ steps.parse.outputs.saml_acs_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$(dirname "$FILE_PATH")"
+
+          if [ "$APP_TYPE" = "SAML" ]; then
+            {
+              echo "# Generated from Jira request automation. Fill SAML-specific values before merge."
+              echo "module \"$MODULE_NAME\" {"
+              echo "  source = \"../../modules/pingsso_application\""
+              echo
+              echo "  app_name = \"$APP_NAME\""
+              echo "  protocol = \"SAML\""
+              echo
+              echo "  saml_config = {"
+              echo "    entity_id = \"$SAML_ENTITY_ID\""
+              echo "    acs_url   = \"$SAML_ACS_URL\""
+              echo "  }"
+              echo
+              echo "  attribute_mapping = {"
+              echo "    email = \"mail\""
+              echo "    sub   = \"uid\""
+              echo "  }"
+              echo
+              echo "  tags = {"
+              echo "    team            = \"$TEAM_NAME\""
+              echo "    jira_issue_key  = \"$JIRA_KEY\""
+              echo "    jira_ticket_url = \"$JIRA_URL\""
+              echo "    source          = \"jsm-automation\""
+              echo "  }"
+              echo "}"
+            } > "$FILE_PATH"
+          else
+            {
+              echo "module \"$MODULE_NAME\" {"
+              echo "  source = \"../../modules/pingsso_application\""
+              echo
+              echo "  app_name = \"$APP_NAME\""
+              echo "  protocol = \"OIDC\""
+              echo
+              echo "  oidc_config = {"
+              echo "    redirect_uris = ["
+              echo "$URIS_JSON" | jq -r '.[] | "      \"" + . + "\","'
+              echo "    ]"
+              echo "    grant_types = ["
+              echo "$GRANT_TYPES_JSON" | jq -r '.[] | "      \"" + . + "\","'
+              echo "    ]"
+              echo "  }"
+              echo
+              echo "  attribute_mapping = {"
+              echo "    email = \"mail\""
+              echo "    sub   = \"uid\""
+              echo "  }"
+              echo
+              echo "  tags = {"
+              echo "    team            = \"$TEAM_NAME\""
+              echo "    jira_issue_key  = \"$JIRA_KEY\""
+              echo "    jira_ticket_url = \"$JIRA_URL\""
+              echo "    source          = \"jsm-automation\""
+              echo "  }"
+              echo "}"
+            } > "$FILE_PATH"
+          fi
+
+      - name: Create or Update Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(terraform): apply JSM request #${{ steps.parse.outputs.issue_number }}"
+          branch: ${{ steps.parse.outputs.branch_name }}
+          title: "Automated Terraform change for JSM request #${{ steps.parse.outputs.issue_number }}"
+          body: |
+            Generated from GitHub issue #${{ steps.parse.outputs.issue_number }}.
+
+            - Jira Issue Key: ${{ steps.parse.outputs.jira_key }}
+            - Jira Ticket URL: ${{ steps.parse.outputs.jira_url }}
+            - Team: ${{ steps.parse.outputs.team_name }}
+            - Application: ${{ steps.parse.outputs.app_name }}
+            - Protocol: ${{ steps.parse.outputs.app_type }}
+
+            Closes #${{ steps.parse.outputs.issue_number }}
+          add-paths: |
+            ${{ steps.parse.outputs.file_path }}
+          labels: |
+            automated-request
+            terraform-change
+
+      - name: Add Issue Comment with PR Link
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
+          PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+        with:
+          script: |
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            if (!issueNumber) {
+              return;
+            }
+
+            const prUrl = process.env.PR_URL;
+            const body = prUrl
+              ? `Terraform PR created/updated: ${prUrl}`
+              : 'Terraform automation ran, but no PR URL was returned. Check workflow logs for details.';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body
+            });
