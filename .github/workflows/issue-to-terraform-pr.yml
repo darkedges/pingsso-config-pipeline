@@ -235,7 +235,7 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.AUTOMATION_GH_TOKEN || github.token }}
           commit-message: "chore(terraform): apply JSM request #${{ steps.parse.outputs.issue_number }}"
           branch: ${{ steps.parse.outputs.branch_name }}
           title: "Automated Terraform change for JSM request #${{ steps.parse.outputs.issue_number }}"
@@ -254,6 +254,23 @@ jobs:
           labels: |
             automated-request
             terraform-change
+
+      - name: Auto-Approve Pull Request
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: hmarr/auto-approve-action@v4
+        with:
+          # Uses GITHUB_TOKEN (Actions bot) to approve a PR created by AUTOMATION_GH_TOKEN.
+          # A PR author cannot approve their own PR, so these must be different actors.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+
+      - name: Enable Auto-Merge
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.AUTOMATION_GH_TOKEN || github.token }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
 
       - name: Add Issue Comment with PR Link
         if: always()
