@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Create GitHub Issue
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           TEAM: ${{ github.event.client_payload.fields.team_name }}
           APP: ${{ github.event.client_payload.fields.app_name }}
           APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
