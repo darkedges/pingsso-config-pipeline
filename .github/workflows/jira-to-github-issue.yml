@@ -4,6 +4,21 @@ on:
     types: ["jira-uri-request"]
 
 jobs:
+  run_if_failure:
+    if: ${{ !github.event.client_payload.passed }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          TEAM: ${{ github.event.client_payload.fields.team_name }}
+          APP: ${{ github.event.client_payload.fields.app_name }}
+          APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
+          DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
+          TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
+          STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
+          PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
+          JIRA_URL: ${{ github.event.client_payload.jsm_url }}
+        run: env
   create-issue:
     runs-on: ubuntu-latest
     steps:
