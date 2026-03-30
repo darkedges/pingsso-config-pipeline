@@ -17,6 +17,37 @@ jobs:
             const payload = context.payload.client_payload || {};
             const fields = payload.fields || {};
 
+            function normalizeListLike(value) {
+              if (value === undefined || value === null) {
+                return [];
+              }
+
+              if (Array.isArray(value)) {
+                return value.map(v => String(v).trim()).filter(Boolean);
+              }
+
+              const raw = String(value).trim();
+              if (!raw) {
+                return [];
+              }
+
+              if (raw.startsWith('[') && raw.endsWith(']')) {
+                try {
+                  const parsed = JSON.parse(raw);
+                  if (Array.isArray(parsed)) {
+                    return parsed.map(v => String(v).trim()).filter(Boolean);
+                  }
+                } catch {
+                  // Fall through to delimiter split for non-JSON list strings.
+                }
+              }
+
+              return raw
+                .split(/\r?\n|,/) 
+                .map(v => v.trim())
+                .filter(Boolean);
+            }
+
             const required = [
               ['issue_key', payload.issue_key],
               ['jsm_url', payload.jsm_url],
@@ -31,7 +62,7 @@ jobs:
               .filter(([, value]) => value === undefined || value === null || String(value).trim() === '')
               .map(([name]) => name);
 
-            const appType = String(fields.app_type || '').trim().toUpperCase();
+            const appType = normalizeListLike(fields.app_type).join(' ').toUpperCase();
             const isOidc = appType.includes('OIDC') || appType.includes('OAUTH');
             const isSaml = appType === 'SAML';
 
@@ -53,8 +84,8 @@ jobs:
                 missing.push('OIDC redirect URIs (at least one of dev/test/stage/prod)');
               }
 
-              const grantTypesRaw = String(fields.oidc_grant_types || '').trim();
-              if (!grantTypesRaw) {
+              const grantTypesRaw = normalizeListLike(fields.oidc_grant_types);
+              if (grantTypesRaw.length === 0) {
                 missing.push('fields.oidc_grant_types');
               }
             }
@@ -94,16 +125,52 @@ jobs:
           SUMMARY: ${{ github.event.client_payload.summary }}
         with:
           script: |
-            const team    = process.env.TEAM;
-            const app     = process.env.APP;
-            const appType = process.env.APP_TYPE;
+            function normalizeListLike(value) {
+              if (value === undefined || value === null) {
+                return [];
+              }
+
+              if (Array.isArray(value)) {
+                return value.map(v => String(v).trim()).filter(Boolean);
+              }
+
+              const raw = String(value).trim();
+              if (!raw || raw.toLowerCase() === 'none provided') {
+                return [];
+              }
+
+              if (raw.startsWith('[') && raw.endsWith(']')) {
+                try {
+                  const parsed = JSON.parse(raw);
+                  if (Array.isArray(parsed)) {
+                    return parsed.map(v => String(v).trim()).filter(Boolean);
+                  }
+                } catch {
+                  // Fall through to delimiter split for non-JSON list strings.
+                }
+              }
+
+              return raw
+                .split(/\r?\n|,/) 
+                .map(v => v.trim())
+                .filter(Boolean);
+            }
+
+            function asMarkdownList(value, fallback = 'None provided') {
+              const items = normalizeListLike(value);
+              return items.length ? items.map(v => `- ${v}`).join('\n') : fallback;
+            }
+
+            const team    = process.env.TEAM || 'None provided';
+            const app     = process.env.APP || 'None provided';
+            const appType = asMarkdownList(process.env.APP_TYPE);
             const samlEntityId = process.env.SAML_ENTITY_ID || 'None provided';
             const samlAcsUrl = process.env.SAML_ACS_URL || 'None provided';
-            const oidcGrantTypes = process.env.OIDC_GRANT_TYPES || 'None provided';
-            const dev     = process.env.DEV   || 'None provided';
-            const test    = process.env.TEST  || 'None provided';
-            const stage   = process.env.STAGE || 'None provided';
-            const prod    = process.env.PROD  || 'None provided';
+            const oidcGrantTypes = asMarkdownList(process.env.OIDC_GRANT_TYPES);
+            const dev     = asMarkdownList(process.env.DEV);
+            const test    = asMarkdownList(process.env.TEST);
+            const stage   = asMarkdownList(process.env.STAGE);
+            const prod    = asMarkdownList(process.env.PROD);
             const jiraUrl = process.env.JIRA_URL;
             const issueKey = process.env.ISSUE_KEY || 'UNKNOWN';
             const reporter = process.env.REPORTER || 'Unknown reporter';
@@ -125,29 +192,19 @@ jobs:
               '### Application Type',
               appType,
               '### OIDC Grant Types',
-              '```',
               oidcGrantTypes,
-              '```',
               '### SAML Entity ID',
               samlEntityId,
               '### SAML ACS URL',
               samlAcsUrl,
               '### Development Redirect URIs',
-              '```',
               dev,
-              '```',
               '### Test Redirect URIs',
-              '```',
               test,
-              '```',
               '### Staging Redirect URIs',
-              '```',
               stage,
-              '```',
               '### Production Redirect URIs',
-              '```',
               prod,
-              '```',
               '### Security Confirmation',
               '- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).',
             ].join('\n');
