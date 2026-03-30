@@ -1,12 +1,3 @@
----
-name: Manage Redirect URIs
-about: Describe this issue template's purpose here.
-title: ''
-labels: ''
-assignees: ''
-
----
-
 name: Redirect URI Request
 description: Request new or updated redirect URIs for an application.
 title: "[URI Request]: "
