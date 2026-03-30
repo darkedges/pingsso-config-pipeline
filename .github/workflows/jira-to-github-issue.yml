@@ -24,7 +24,7 @@ jobs:
             --body "### Request Details
           **Team Name:** $TEAM
           **App Name:** $APP
-          **Jira Ticket:** $JIRA_URL
+          **Jira URL:** $JIRA_URL
 
           ### Redirect URIs
           #### Development
