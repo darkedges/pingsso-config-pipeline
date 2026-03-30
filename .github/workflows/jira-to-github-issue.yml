@@ -7,55 +7,64 @@ jobs:
   create-issue:
     runs-on: ubuntu-latest
     steps:
-    - name: Create GitHub Issue
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { team, app, appType, dev, test, stage, prod, jiraUrl, reporter } = {
-            team:    '${{ github.event.client_payload.fields.team_name }}',
-            app:     '${{ github.event.client_payload.fields.app_name }}',
-            appType: '${{ github.event.client_payload.fields.app_type }}',
-            dev:     '${{ github.event.client_payload.fields.dev_redirect_uris }}',
-            test:    '${{ github.event.client_payload.fields.test_redirect_uris }}',
-            stage:   '${{ github.event.client_payload.fields.stage_redirect_uris }}',
-            prod:    '${{ github.event.client_payload.fields.prod_redirect_uris }}',
-            jiraUrl: '${{ github.event.client_payload.jsm_url }}',
-            reporter:'${{ github.event.client_payload.reporter }}',
-          };
-    
-          const body = `
-### JIRA Ticket URL
-${jiraUrl}
-### Team Name
-${team}
-### Application Name
-${app}
-### Application Type
-${appType}
-### Development Redirect URIs
-\`\`\`
-${dev || 'None provided'}
-\`\`\`
-### Test Redirect URIs
-\`\`\`
-${test || 'None provided'}
-\`\`\`
-### Staging Redirect URIs
-\`\`\`
-${stage || 'None provided'}
-\`\`\`
-### Production Redirect URIs
-\`\`\`
-${prod || 'None provided'}
-\`\`\`
-### Security Confirmation
-- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
-      `.trim();
+      - name: Create GitHub Issue
+        uses: actions/github-script@v7
+        env:
+          TEAM: ${{ github.event.client_payload.fields.team_name }}
+          APP: ${{ github.event.client_payload.fields.app_name }}
+          APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
+          DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
+          TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
+          STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
+          PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
+          JIRA_URL: ${{ github.event.client_payload.jsm_url }}
+          ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
+          REPORTER: ${{ github.event.client_payload.reporter }}
+          SUMMARY: ${{ github.event.client_payload.summary }}
+        with:
+          script: |
+            const team    = process.env.TEAM;
+            const app     = process.env.APP;
+            const appType = process.env.APP_TYPE;
+            const dev     = process.env.DEV   || 'None provided';
+            const test    = process.env.TEST  || 'None provided';
+            const stage   = process.env.STAGE || 'None provided';
+            const prod    = process.env.PROD  || 'None provided';
+            const jiraUrl = process.env.JIRA_URL;
 
-      await github.rest.issues.create({
-        owner: context.repo.owner,
-        repo:  context.repo.repo,
-        title: `[Manage Redirect URI]: ${app} (${team})`,
-        labels: ['redirect-uris', 'automated-request'],
-        body,
-      });
+            const body = [
+              '### JIRA Ticket URL',
+              jiraUrl,
+              '### Team Name',
+              team,
+              '### Application Name',
+              app,
+              '### Application Type',
+              appType,
+              '### Development Redirect URIs',
+              '```',
+              dev,
+              '```',
+              '### Test Redirect URIs',
+              '```',
+              test,
+              '```',
+              '### Staging Redirect URIs',
+              '```',
+              stage,
+              '```',
+              '### Production Redirect URIs',
+              '```',
+              prod,
+              '```',
+              '### Security Confirmation',
+              '- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: '[Manage Redirect URI]: ' + app + ' (' + team + ')',
+              labels: ['redirect-uris', 'automated-request'],
+              body,
+            });
