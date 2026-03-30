@@ -14,6 +14,16 @@ body:
   - type: input
     id: app_name
     attributes:
+      label: Application Type
+      options:
+       - SAML
+       - OIDC / OAuth2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: app_type
+    attributes:
       label: Application Name
       placeholder: e.g., customer-portal-api
     validations:
