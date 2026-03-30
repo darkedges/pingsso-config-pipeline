@@ -12,6 +12,21 @@ jobs:
     steps:
       - name: Validate Jira Payload Schema
         uses: actions/github-script@v7
+        env:
+          TEAM: ${{ github.event.client_payload.fields.team_name }}
+          APP: ${{ github.event.client_payload.fields.app_name }}
+          APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
+          SAML_ENTITY_ID: ${{ github.event.client_payload.fields.saml_entity_id }}
+          SAML_ACS_URL: ${{ github.event.client_payload.fields.saml_acs_url }}
+          OIDC_GRANT_TYPES: ${{ github.event.client_payload.fields.oidc_grant_types }}
+          DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
+          TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
+          STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
+          PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
+          JIRA_URL: ${{ github.event.client_payload.jsm_url }}
+          ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
+          REPORTER: ${{ github.event.client_payload.reporter }}
+          SUMMARY: ${{ github.event.client_payload.summary }}
         with:
           script: |
             const payload = context.payload.client_payload || {};
