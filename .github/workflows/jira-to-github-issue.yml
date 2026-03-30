@@ -175,10 +175,11 @@ jobs:
             }
 
             if (isSaml) {
-              if (!String(fields.saml_entity_id || '').trim()) {
+              const samlEntity = normalizeListLike(fields.saml_entity_id)[0] || '';
+              if (!samlEntity) {
                 missing.push('fields.saml_entity_id');
               }
-              const samlAcs = String(fields.saml_acs_url || '').trim();
+              const samlAcs = normalizeListLike(fields.saml_acs_url)[0] || '';
               if (!samlAcs) {
                 missing.push('fields.saml_acs_url');
               } else if (!samlAcs.startsWith('https://')) {
@@ -252,11 +253,16 @@ jobs:
               return items.length ? items.map(v => `- ${v}`).join('\n') : fallback;
             }
 
-            const team    = process.env.TEAM || 'None provided';
-            const app     = process.env.APP || 'None provided';
-            const appType = asMarkdownList(process.env.APP_TYPE);
-            const samlEntityId = process.env.SAML_ENTITY_ID || 'None provided';
-            const samlAcsUrl = process.env.SAML_ACS_URL || 'None provided';
+            function asSingleValue(value, fallback = 'None provided') {
+              const items = normalizeListLike(value);
+              return items.length ? items[0] : fallback;
+            }
+
+            const team    = asSingleValue(process.env.TEAM);
+            const app     = asSingleValue(process.env.APP);
+            const appType = asSingleValue(process.env.APP_TYPE);
+            const samlEntityId = asSingleValue(process.env.SAML_ENTITY_ID);
+            const samlAcsUrl = asSingleValue(process.env.SAML_ACS_URL);
             const oidcGrantTypes = asMarkdownList(process.env.OIDC_GRANT_TYPES);
             const dev     = asMarkdownList(process.env.DEV);
             const test    = asMarkdownList(process.env.TEST);
