@@ -1,9 +1,13 @@
 name: Manage Redirect URIs
 about: Request new or updated redirect URIs for an application.
-title: ''
-labels: ''
+title: "[Manage Redirect URIs]: "
+labels: ["redirect_uri"]
 assignees: ''
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this Manage Redirect URI request
   - type: input
     id: team_name
     attributes:
