@@ -23,7 +23,7 @@ jobs:
           SUMMARY: ${{ github.event.client_payload.summary }}
         run: |
           gh issue create \
-            --repo pingsso-config-pipeline \
+            --repo darkedges/pingsso-config-pipeline \
             --title "[URI Request]: $APP ($TEAM)" \
             --label "redirect-uris,automated-request" \
             --body "### JIRA Ticket URL
