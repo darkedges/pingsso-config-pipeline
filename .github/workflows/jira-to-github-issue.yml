@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Issue
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           TEAM: ${{ github.event.client_payload.fields.team_name }}
           APP: ${{ github.event.client_payload.fields.app_name }}
           APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
@@ -21,35 +21,50 @@ jobs:
           ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
           REPORTER: ${{ github.event.client_payload.reporter }}
           SUMMARY: ${{ github.event.client_payload.summary }}
-        run: |
-          gh issue create \
-            --repo darkedges/pingsso-config-pipeline \
-            --title "[Manage Redirect URI]: $APP ($TEAM)" \
-            --label "redirect-uris,automated-request" \
-            --body "### JIRA Ticket URL
-          $JIRA_URL
-          ### Team Name
-          $TEAM
-          ### Application Name
-          $APP
-          ### Application Type
-          $APP_TYPE
-          ### Development Redirect URIs
-          \`\`\`
-          ${DEV:-None provided}
-          \`\`\`
-          ### Test Redirect URIs
-          \`\`\`
-          ${TEST:-None provided}
-          \`\`\`
-          ### Staging Redirect URIs
-          \`\`\`
-          ${STAGE:-None provided}
-          \`\`\`
-          ### Production Redirect URIs
-          \`\`\`
-          ${PROD:-None provided}
-          \`\`\`
-          ### Security Confirmation
-          - [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).
-          "
+        with:
+          script: |
+            const team    = process.env.TEAM;
+            const app     = process.env.APP;
+            const appType = process.env.APP_TYPE;
+            const dev     = process.env.DEV   || 'None provided';
+            const test    = process.env.TEST  || 'None provided';
+            const stage   = process.env.STAGE || 'None provided';
+            const prod    = process.env.PROD  || 'None provided';
+            const jiraUrl = process.env.JIRA_URL;
+
+            const body = [
+              '### JIRA Ticket URL',
+              jiraUrl,
+              '### Team Name',
+              team,
+              '### Application Name',
+              app,
+              '### Application Type',
+              appType,
+              '### Development Redirect URIs',
+              '```',
+              dev,
+              '```',
+              '### Test Redirect URIs',
+              '```',
+              test,
+              '```',
+              '### Staging Redirect URIs',
+              '```',
+              stage,
+              '```',
+              '### Production Redirect URIs',
+              '```',
+              prod,
+              '```',
+              '### Security Confirmation',
+              '- [x] I confirm these URIs follow our security standards (e.g., HTTPS for non-localhost).',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: '[Manage Redirect URI]: ' + app + ' (' + team + ')',
+              labels: ['redirect-uris', 'automated-request'],
+              body,
+            });
