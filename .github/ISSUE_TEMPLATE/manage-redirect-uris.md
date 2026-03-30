@@ -1,8 +1,10 @@
+---
 name: Manage Redirect URIs
 about: Request new or updated redirect URIs for an application.
 title: "[Manage Redirect URIs]: "
 labels: ["redirect_uri"]
 assignees: ''
+---
 body:
   - type: markdown
     attributes:
