@@ -146,6 +146,18 @@ Optional for Jira callback automation:
 - `JIRA_BASE_URL` - Jira tenant base URL (e.g., `https://company.atlassian.net`)
 - `JIRA_DONE_TRANSITION_NAME` - Transition name to move ticket after successful apply (e.g., `Done`)
 
+### GitHub Repository Action Permissions
+
+In repository Settings → Actions → General, set:
+
+- Workflow permissions: `Read and write permissions`
+- Allow GitHub Actions to create and approve pull requests: enabled
+
+The post-merge cleanup and Jira callback workflow also requires write-capable token permissions to:
+
+- delete merged automation branches
+- comment on merged pull requests with Jira callback status
+
 ### Additional Automation Workflows
 
 - `jira-to-github-issue.yml` creates a GitHub issue from Jira Service Management webhook payload.
