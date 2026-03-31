@@ -67,13 +67,16 @@ jobs:
 
             const keyMatch = body.match(/Jira Issue Key:\s*([^\n]+)/i);
             const urlMatch = body.match(/Jira Ticket URL:\s*([^\n]+)/i);
+            const issueMatch = body.match(/Closes\s+#(\d+)/i);
 
             const jiraKey = keyMatch ? keyMatch[1].trim() : '';
             const jiraUrl = urlMatch ? urlMatch[1].trim() : '';
+            const issueNumber = issueMatch ? issueMatch[1].trim() : '';
 
             core.setOutput('jira_key', jiraKey);
             core.setOutput('jira_url', jiraUrl);
             core.setOutput('pr_url', pr?.html_url || '');
+            core.setOutput('issue_number', issueNumber);
 
       - name: Post Jira merge comment
         id: jira_comment
@@ -167,10 +170,11 @@ jobs:
           echo "status=completed" >> "$GITHUB_OUTPUT"
           echo "message=Transitioned Jira issue $JIRA_KEY using transition '$JIRA_DONE_TRANSITION_NAME'." >> "$GITHUB_OUTPUT"
 
-      - name: Comment PR with Jira callback status
+      - name: Comment Issue with Jira callback status
         if: always()
         uses: actions/github-script@v7
         env:
+          ISSUE_NUMBER: ${{ steps.jira_meta.outputs.issue_number }}
           JIRA_KEY: ${{ steps.jira_meta.outputs.jira_key }}
           JIRA_URL: ${{ steps.jira_meta.outputs.jira_url }}
           JIRA_COMMENT_STATUS: ${{ steps.jira_comment.outputs.status }}
@@ -179,8 +183,9 @@ jobs:
           JIRA_TRANSITION_MESSAGE: ${{ steps.jira_transition.outputs.message }}
         with:
           script: |
-            const prNumber = context.payload.pull_request?.number;
-            if (!prNumber) {
+            const issueNumber = Number(process.env.ISSUE_NUMBER || 0);
+            if (!issueNumber) {
+              core.info('No originating GitHub issue number found in PR body; skipping issue status comment.');
               return;
             }
 
@@ -203,6 +208,6 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: prNumber,
+              issue_number: issueNumber,
               body,
             });
