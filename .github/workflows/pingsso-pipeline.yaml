@@ -211,12 +211,18 @@ jobs:
 
           jq -n --arg body "$COMMENT_TEXT" '{body:$body}' > jira-comment.json
 
-          curl -sS -f -X POST \
+          HTTP_CODE=$(curl -sS -o jira-comment-response.json -w "%{http_code}" -X POST \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @jira-comment.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Jira comment failed with HTTP $HTTP_CODE"
+            cat jira-comment-response.json
+            exit 1
+          fi
 
       - name: Transition Jira ticket to done state
         if: steps.jira_meta.outputs.jira_key != '' && env.JIRA_BASE_URL != '' && env.JIRA_DONE_TRANSITION_NAME != ''
@@ -236,10 +242,18 @@ jobs:
           JIRA_API_ROOT="${JIRA_BASE_URL%/}"
           JIRA_KEY_CLEAN="$(printf "%s" "$JIRA_KEY" | tr -d '\r' | awk '{print $1}')"
 
-          curl -sS -f \
+          HTTP_CODE=$(curl -sS -o jira-transitions-response.json -w "%{http_code}" \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > transitions.json
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Jira transition lookup failed with HTTP $HTTP_CODE"
+            cat jira-transitions-response.json
+            exit 1
+          fi
+
+          cp jira-transitions-response.json transitions.json
 
           TRANSITION_ID=$(jq -r --arg name "$JIRA_DONE_TRANSITION_NAME" '.transitions[] | select(.name == $name) | .id' transitions.json | head -n 1)
 
@@ -250,9 +264,15 @@ jobs:
 
           jq -n --arg id "$TRANSITION_ID" '{transition:{id:$id}}' > transition-request.json
 
-          curl -sS -f -X POST \
+          HTTP_CODE=$(curl -sS -o jira-transition-post-response.json -w "%{http_code}" -X POST \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @transition-request.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Jira transition failed with HTTP $HTTP_CODE"
+            cat jira-transition-post-response.json
+            exit 1
+          fi

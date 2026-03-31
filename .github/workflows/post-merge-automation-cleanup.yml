@@ -69,8 +69,10 @@ jobs:
             const urlMatch = body.match(/Jira Ticket URL:\s*([^\n]+)/i);
             const issueMatch = body.match(/Closes\s+#(\d+)/i);
 
-            const jiraKey = keyMatch ? keyMatch[1].trim() : '';
             const jiraUrl = urlMatch ? urlMatch[1].trim() : '';
+            const jiraKeyFromBody = keyMatch ? keyMatch[1].trim() : '';
+            const jiraKeyFromUrl = (jiraUrl.match(/([A-Z][A-Z0-9]+-\d+)/) || [])[1] || '';
+            const jiraKey = jiraKeyFromBody || jiraKeyFromUrl;
             const issueNumber = issueMatch ? issueMatch[1].trim() : '';
 
             core.setOutput('jira_key', jiraKey);
@@ -115,12 +117,23 @@ jobs:
 
           jq -n --arg body "$COMMENT_TEXT" '{body:$body}' > jira-comment.json
 
-          curl -sS -f -X POST \
+          HTTP_CODE=$(curl -sS -o jira-comment-response.json -w "%{http_code}" -X POST \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @jira-comment.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            ERROR_TEXT=$(jq -r '([.errorMessages[]?] + ([.errors // {}] | to_entries | map("\(.key): \(.value)"))) | join("; ")' jira-comment-response.json 2>/dev/null || true)
+            if [ -z "$ERROR_TEXT" ] || [ "$ERROR_TEXT" = "null" ]; then
+              ERROR_TEXT=$(head -c 400 jira-comment-response.json | tr '\n' ' ')
+            fi
+
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message=Jira comment failed (HTTP $HTTP_CODE): $ERROR_TEXT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           echo "status=completed" >> "$GITHUB_OUTPUT"
           echo "message=Posted merge comment to Jira issue $JIRA_KEY." >> "$GITHUB_OUTPUT"
@@ -146,10 +159,23 @@ jobs:
           JIRA_API_ROOT="${JIRA_BASE_URL%/}"
           JIRA_KEY_CLEAN="$(printf "%s" "$JIRA_KEY" | tr -d '\r' | awk '{print $1}')"
 
-          curl -sS -f \
+          HTTP_CODE=$(curl -sS -o jira-transitions-response.json -w "%{http_code}" \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > transitions.json
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            ERROR_TEXT=$(jq -r '([.errorMessages[]?] + ([.errors // {}] | to_entries | map("\(.key): \(.value)"))) | join("; ")' jira-transitions-response.json 2>/dev/null || true)
+            if [ -z "$ERROR_TEXT" ] || [ "$ERROR_TEXT" = "null" ]; then
+              ERROR_TEXT=$(head -c 400 jira-transitions-response.json | tr '\n' ' ')
+            fi
+
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message=Jira transition lookup failed (HTTP $HTTP_CODE): $ERROR_TEXT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          cp jira-transitions-response.json transitions.json
 
           TRANSITION_ID=$(jq -r --arg name "$JIRA_DONE_TRANSITION_NAME" '.transitions[] | select(.name == $name) | .id' transitions.json | head -n 1)
 
@@ -162,12 +188,23 @@ jobs:
 
           jq -n --arg id "$TRANSITION_ID" '{transition:{id:$id}}' > transition-request.json
 
-          curl -sS -f -X POST \
+          HTTP_CODE=$(curl -sS -o jira-transition-post-response.json -w "%{http_code}" -X POST \
             --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @transition-request.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" || true)
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            ERROR_TEXT=$(jq -r '([.errorMessages[]?] + ([.errors // {}] | to_entries | map("\(.key): \(.value)"))) | join("; ")' jira-transition-post-response.json 2>/dev/null || true)
+            if [ -z "$ERROR_TEXT" ] || [ "$ERROR_TEXT" = "null" ]; then
+              ERROR_TEXT=$(head -c 400 jira-transition-post-response.json | tr '\n' ' ')
+            fi
+
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "message=Jira transition failed (HTTP $HTTP_CODE): $ERROR_TEXT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           echo "status=completed" >> "$GITHUB_OUTPUT"
           echo "message=Transitioned Jira issue $JIRA_KEY using transition '$JIRA_DONE_TRANSITION_NAME'." >> "$GITHUB_OUTPUT"
