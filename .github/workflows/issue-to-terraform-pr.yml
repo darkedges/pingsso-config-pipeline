@@ -60,10 +60,35 @@ jobs:
             const issueNumber = issue.number;
             const issueTitle = issue.title || '';
 
+            function parseSections(markdown) {
+              const sections = {};
+              const lines = String(markdown || '').replace(/\r/g, '').split('\n');
+              let current = null;
+
+              for (const line of lines) {
+                const heading = line.match(/^###\s+(.+?)\s*$/);
+                if (heading) {
+                  current = heading[1].trim();
+                  if (!sections[current]) {
+                    sections[current] = [];
+                  }
+                  continue;
+                }
+
+                if (current) {
+                  sections[current].push(line);
+                }
+              }
+
+              return Object.fromEntries(
+                Object.entries(sections).map(([k, v]) => [k, v.join('\n').trim()])
+              );
+            }
+
+            const sections = parseSections(body);
+
             function section(label) {
-              const re = new RegExp(`### ${label}\\r?\\n([\\s\\S]*?)(?=\\r?\\n### |$)`, 'm');
-              const match = body.match(re);
-              return match ? match[1].trim() : '';
+              return sections[label] || '';
             }
 
             function normalizeBlock(value) {
@@ -98,7 +123,15 @@ jobs:
                   .map(v => cleanToken(v))
                   .flatMap(v => {
                     const matches = String(v).match(/https?:\/\/[^\s,]+/g);
-                    return matches && matches.length ? matches : [v];
+                    if (matches && matches.length) {
+                      return matches;
+                    }
+
+                    if (/^[A-Z0-9_\-\s]+$/.test(v) && /\s+/.test(v)) {
+                      return v.split(/\s+/).map(cleanToken).filter(Boolean);
+                    }
+
+                    return [v];
                   })
                   .map(v => cleanToken(v))
                   .filter(Boolean)
