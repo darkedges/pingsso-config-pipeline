@@ -61,7 +61,7 @@ jobs:
             const issueTitle = issue.title || '';
 
             function section(label) {
-              const re = new RegExp(`### ${label}\\n([\\s\\S]*?)(?=\\n### |$)`, 'm');
+              const re = new RegExp(`### ${label}\\r?\\n([\\s\\S]*?)(?=\\r?\\n### |$)`, 'm');
               const match = body.match(re);
               return match ? match[1].trim() : '';
             }
@@ -90,9 +90,16 @@ jobs:
                   .trim();
               }
 
+              const normalized = cleaned.replace(/\\r\\n|\\n|\\r/g, '\n');
+
               return [...new Set(
-                cleaned
+                normalized
                   .split(/\r?\n|,/)
+                  .map(v => cleanToken(v))
+                  .flatMap(v => {
+                    const matches = String(v).match(/https?:\/\/[^\s,]+/g);
+                    return matches && matches.length ? matches : [v];
+                  })
                   .map(v => cleanToken(v))
                   .filter(Boolean)
               )];
