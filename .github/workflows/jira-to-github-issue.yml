@@ -54,9 +54,11 @@ jobs:
                 return [];
               }
 
-              if (raw.startsWith('[') && raw.endsWith(']')) {
+              const normalizedRaw = raw.replace(/\\r\\n|\\n|\\r/g, '\n');
+
+              if (normalizedRaw.startsWith('[') && normalizedRaw.endsWith(']')) {
                 try {
-                  const parsed = JSON.parse(raw);
+                  const parsed = JSON.parse(normalizedRaw);
                   if (Array.isArray(parsed)) {
                     return parsed.map(cleanToken).filter(Boolean);
                   }
@@ -65,10 +67,18 @@ jobs:
                 }
               }
 
-              return raw
+              return normalizedRaw
                 .split(/\r?\n|,/) 
                 .map(cleanToken)
                 .filter(Boolean);
+            }
+
+            function normalizeUriLike(value) {
+              const items = normalizeListLike(value);
+              return [...new Set(items.flatMap(item => {
+                const matches = String(item).match(/https?:\/\/[^\s,]+/g);
+                return matches && matches.length ? matches : [item];
+              }).map(v => String(v).trim()).filter(Boolean))];
             }
 
             const required = [
@@ -99,7 +109,7 @@ jobs:
                 fields.test_redirect_uris,
                 fields.stage_redirect_uris,
                 fields.prod_redirect_uris,
-              ].flatMap(v => normalizeListLike(v));
+              ].flatMap(v => normalizeUriLike(v));
 
               if (envUris.length === 0) {
                 missing.push('OIDC redirect URIs (at least one of dev/test/stage/prod)');
@@ -158,9 +168,11 @@ jobs:
                 return [];
               }
 
-              if (raw.startsWith('[') && raw.endsWith(']')) {
+              const normalizedRaw = raw.replace(/\\r\\n|\\n|\\r/g, '\n');
+
+              if (normalizedRaw.startsWith('[') && normalizedRaw.endsWith(']')) {
                 try {
-                  const parsed = JSON.parse(raw);
+                  const parsed = JSON.parse(normalizedRaw);
                   if (Array.isArray(parsed)) {
                     return parsed.map(cleanToken).filter(Boolean);
                   }
@@ -169,10 +181,18 @@ jobs:
                 }
               }
 
-              return raw
+              return normalizedRaw
                 .split(/\r?\n|,/) 
                 .map(cleanToken)
                 .filter(Boolean);
+            }
+
+            function normalizeUriLike(value) {
+              const items = normalizeListLike(value);
+              return [...new Set(items.flatMap(item => {
+                const matches = String(item).match(/https?:\/\/[^\s,]+/g);
+                return matches && matches.length ? matches : [item];
+              }).map(v => String(v).trim()).filter(Boolean))];
             }
 
             function asMarkdownList(value, fallback = 'None provided') {
@@ -185,16 +205,21 @@ jobs:
               return items.length ? items[0] : fallback;
             }
 
+            function asUriMarkdownList(value, fallback = 'None provided') {
+              const items = normalizeUriLike(value);
+              return items.length ? items.map(v => `- ${v}`).join('\n') : fallback;
+            }
+
             const team    = asSingleValue(fields.team_name);
             const app     = asSingleValue(fields.app_name);
             const appType = asSingleValue(fields.app_type);
             const samlEntityId = asSingleValue(fields.saml_entity_id);
             const samlAcsUrl = asSingleValue(fields.saml_acs_url);
             const oidcGrantTypes = asMarkdownList(fields.oidc_grant_types);
-            const dev     = asMarkdownList(fields.dev_redirect_uris);
-            const test    = asMarkdownList(fields.test_redirect_uris);
-            const stage   = asMarkdownList(fields.stage_redirect_uris);
-            const prod    = asMarkdownList(fields.prod_redirect_uris);
+            const dev     = asUriMarkdownList(fields.dev_redirect_uris);
+            const test    = asUriMarkdownList(fields.test_redirect_uris);
+            const stage   = asUriMarkdownList(fields.stage_redirect_uris);
+            const prod    = asUriMarkdownList(fields.prod_redirect_uris);
             const jiraUrl = payload.jsm_url || 'No JIRA URL provided';
             const issueKey = payload.issue_key || 'UNKNOWN';
             const reporter = payload.reporter || 'Unknown reporter';
