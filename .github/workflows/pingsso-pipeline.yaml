@@ -206,16 +206,17 @@ jobs:
           EOF
           )
 
-          AUTH=$(printf "%s:%s" "$JIRA_USER_EMAIL" "$JIRA_API_TOKEN" | base64)
+          JIRA_API_ROOT="${JIRA_BASE_URL%/}"
+          JIRA_KEY_CLEAN="$(printf "%s" "$JIRA_KEY" | tr -d '\r' | awk '{print $1}')"
 
           jq -n --arg body "$COMMENT_TEXT" '{body:$body}' > jira-comment.json
 
-          curl -sS -X POST \
-            -H "Authorization: Basic $AUTH" \
+          curl -sS -f -X POST \
+            --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @jira-comment.json \
-            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/comment" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" > /dev/null
 
       - name: Transition Jira ticket to done state
         if: steps.jira_meta.outputs.jira_key != '' && env.JIRA_BASE_URL != '' && env.JIRA_DONE_TRANSITION_NAME != ''
@@ -232,12 +233,13 @@ jobs:
             exit 0
           fi
 
-          AUTH=$(printf "%s:%s" "$JIRA_USER_EMAIL" "$JIRA_API_TOKEN" | base64)
+          JIRA_API_ROOT="${JIRA_BASE_URL%/}"
+          JIRA_KEY_CLEAN="$(printf "%s" "$JIRA_KEY" | tr -d '\r' | awk '{print $1}')"
 
-          curl -sS \
-            -H "Authorization: Basic $AUTH" \
+          curl -sS -f \
+            --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
-            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/transitions" > transitions.json
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > transitions.json
 
           TRANSITION_ID=$(jq -r --arg name "$JIRA_DONE_TRANSITION_NAME" '.transitions[] | select(.name == $name) | .id' transitions.json | head -n 1)
 
@@ -248,9 +250,9 @@ jobs:
 
           jq -n --arg id "$TRANSITION_ID" '{transition:{id:$id}}' > transition-request.json
 
-          curl -sS -X POST \
-            -H "Authorization: Basic $AUTH" \
+          curl -sS -f -X POST \
+            --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @transition-request.json \
-            "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY/transitions" > /dev/null
+            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/transitions" > /dev/null
