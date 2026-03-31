@@ -216,7 +216,7 @@ jobs:
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @jira-comment.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" || true)
+            "$JIRA_API_ROOT/rest/api/2/issue/$JIRA_KEY_CLEAN/comment" || true)
 
           if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             echo "Jira comment failed with HTTP $HTTP_CODE"

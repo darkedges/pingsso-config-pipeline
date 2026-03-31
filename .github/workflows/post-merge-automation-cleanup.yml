@@ -122,7 +122,7 @@ jobs:
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
             --data @jira-comment.json \
-            "$JIRA_API_ROOT/rest/api/3/issue/$JIRA_KEY_CLEAN/comment" || true)
+            "$JIRA_API_ROOT/rest/api/2/issue/$JIRA_KEY_CLEAN/comment" || true)
 
           if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             ERROR_TEXT=$(jq -r '([.errorMessages[]?] + ([.errors // {}] | to_entries | map("\(.key): \(.value)"))) | join("; ")' jira-comment-response.json 2>/dev/null || true)
