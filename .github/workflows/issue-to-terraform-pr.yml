@@ -302,6 +302,7 @@ jobs:
           labels: |
             automated-request
             terraform-change
+          delete-branch: true
 
       - name: Auto-Approve Pull Request
         if: steps.cpr.outputs.pull-request-number != ''
