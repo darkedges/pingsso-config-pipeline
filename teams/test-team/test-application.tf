@@ -7,10 +7,10 @@ module "test-application-oidc" {
   oidc_config = {
     redirect_uris = [
       "http://localhost:3000/auth/callback",
+      "http://localhost:3002/auth/callback",
     ]
     grant_types = [
       "AUTHORIZATION_CODE",
-      "REFRESH_TOKEN",
     ]
   }
 
@@ -21,8 +21,8 @@ module "test-application-oidc" {
 
   tags = {
     team            = "Test Team"
-    jira_issue_key  = "SUP-56"
-    jira_ticket_url = "https://darkedges.atlassian.net/browse/SUP-56"
+    jira_issue_key  = "SUP-57"
+    jira_ticket_url = "https://darkedges.atlassian.net/browse/SUP-57"
     source          = "jsm-automation"
   }
 }
