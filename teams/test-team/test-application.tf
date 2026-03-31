@@ -20,8 +20,8 @@ module "test-application-oidc" {
 
   tags = {
     team            = "Test Team"
-    jira_issue_key  = "SUP-39"
-    jira_ticket_url = "https://darkedges.atlassian.net/browse/SUP-39"
+    jira_issue_key  = "SUP-40"
+    jira_ticket_url = "https://darkedges.atlassian.net/browse/SUP-40"
     source          = "jsm-automation"
   }
 }
