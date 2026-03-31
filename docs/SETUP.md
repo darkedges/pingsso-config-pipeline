@@ -93,6 +93,7 @@ Environment selection for automation workflow:
 - If you store `AUTOMATION_GH_TOKEN` as a **repository secret**, it is available regardless of environment.
 
 To create this token:
+
 1. Create (or use) a GitHub bot/service account separate from your personal account
 2. In that account: Settings → Developer settings → Personal access tokens → Tokens (classic)
 3. Generate a new token with `repo` scope
@@ -101,17 +102,19 @@ To create this token:
 Fine-grained PAT option (instead of classic PAT):
 
 If you use a fine-grained PAT for `AUTOMATION_GH_TOKEN`, configure it with:
+
 - Repository access: this repository
-- Repository permissions:
-   - Contents: Read and write
-   - Pull requests: Read and write
-   - Metadata: Read
+- Repository permission `Contents`: Read and write
+- Repository permission `Pull requests`: Read and write
+- Repository permission `Metadata`: Read
 
 Also required:
+
 - The bot account must have Write (or higher) access to the repository
 - If your org enforces SSO, authorize the PAT for the organization
 
 Troubleshooting:
+
 - Error `Input token not supplied`: confirm the secret is a **repository secret** (not environment secret), named exactly `AUTOMATION_GH_TOKEN` or `AUTOMATION_GITHUB_TOKEN`, and available to this repository.
 - If your org limits secret visibility, ensure this repository is included in the secret access policy.
 - If your secret is environment-scoped, confirm `AUTOMATION_ENVIRONMENT` points to that same environment name.
@@ -146,9 +149,15 @@ Optional for Jira callback automation:
 ### Additional Automation Workflows
 
 - `jira-to-github-issue.yml` creates a GitHub issue from Jira Service Management webhook payload.
-- `issue-to-terraform-pr.yml` generates a Terraform file in `teams/` and opens or updates a pull request automatically.
+- `issue-to-terraform-pr.yml` parses the GitHub issue body (including multiline and escaped-newline values), generates a Terraform file in `teams/`, opens or updates a pull request, auto-approves the PR when eligible, enables auto-merge, and deletes the automation branch after merge.
+- `post-merge-automation-cleanup.yml` runs when a PR is merged, force-cleans automation branches (`automation/jsm-*`) if still present, posts a Jira merge comment, and optionally transitions the Jira ticket.
 - `issue-to-terraform-dry-run.yml` validates request data and generates a Terraform preview artifact without creating a PR.
 - `pingsso-pipeline.yaml` applies approved changes and can post deployment evidence back to Jira and transition the ticket.
+
+Notes on generated OIDC arrays:
+
+- Redirect URI and grant type sections accept newline-separated, comma-separated, markdown bullet, and escaped newline (`\n`) formats.
+- The parser normalizes these formats before writing Terraform so `redirect_uris` and `grant_types` include all provided entries.
 
 ### Dry Run Testing (No PR Created)
 
@@ -199,6 +208,51 @@ For SAML requests, set:
 - `fields.saml_entity_id` = SP entity identifier
 - `fields.saml_acs_url` = HTTPS ACS URL
 - `fields.oidc_grant_types` and redirect URI fields can be empty if not used
+
+### Known Good Payload Shapes for OIDC Lists
+
+The automation accepts multiple formats for OIDC list fields (`oidc_grant_types`, `dev_redirect_uris`, `test_redirect_uris`, `stage_redirect_uris`, `prod_redirect_uris`).
+
+Use one of these known-good shapes:
+
+1. Newline-separated values
+
+```json
+{
+   "fields": {
+      "oidc_grant_types": "AUTHORIZATION_CODE\nREFRESH_TOKEN",
+      "dev_redirect_uris": "http://localhost:3000/auth/callback\nhttp://localhost:3002/auth/callback"
+   }
+}
+```
+
+1. Comma-separated values
+
+```json
+{
+   "fields": {
+      "oidc_grant_types": "AUTHORIZATION_CODE,REFRESH_TOKEN",
+      "dev_redirect_uris": "http://localhost:3000/auth/callback,http://localhost:3002/auth/callback"
+   }
+}
+```
+
+1. Markdown bullet values
+
+```json
+{
+   "fields": {
+      "oidc_grant_types": "- AUTHORIZATION_CODE\n- REFRESH_TOKEN",
+      "dev_redirect_uris": "- http://localhost:3000/auth/callback\n- http://localhost:3002/auth/callback"
+   }
+}
+```
+
+Notes:
+
+- Escaped newline text (`\\n`) and literal newlines are both supported.
+- Mixed formats are normalized before issue generation and Terraform rendering.
+- Values are deduplicated while preserving first-seen order.
 
 ### Sample Jira Webhook Payload (SAML)
 

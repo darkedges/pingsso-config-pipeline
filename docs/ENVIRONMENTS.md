@@ -45,6 +45,21 @@ Use GitHub's built-in [Environments feature](https://docs.github.com/en/actions/
      environment: production  # Change this to switch environments
    ```
 
+5. **Configure JSM Automation Workflow Environment**
+
+   The issue-to-PR automation workflow also uses GitHub Environments:
+
+   - Workflow: `.github/workflows/issue-to-terraform-pr.yml`
+   - Environment selector: repository variable `AUTOMATION_ENVIRONMENT`
+   - Default if unset: `production`
+
+   Set `AUTOMATION_ENVIRONMENT` in:
+   Settings → Secrets and variables → Actions → Variables
+
+   Important:
+   - If `AUTOMATION_GH_TOKEN` is stored as an environment secret, it must exist in the selected `AUTOMATION_ENVIRONMENT`.
+   - If `AUTOMATION_GH_TOKEN` is stored as a repository secret, it is available regardless of environment.
+
 ### Example Environment Configurations
 
 **Development:**

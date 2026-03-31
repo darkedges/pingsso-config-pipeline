@@ -298,6 +298,7 @@ The following automation capabilities are implemented in this repository:
 
 - Payload schema validation in .github/workflows/jira-to-github-issue.yml, including protocol-specific required fields.
 - Issue-to-PR automation in .github/workflows/issue-to-terraform-pr.yml to generate Terraform changes in teams/ and open or update pull requests.
+- Post-merge cleanup and callback in .github/workflows/post-merge-automation-cleanup.yml to remove automation branches and update Jira on merged pull requests.
 - Manual parser preview in .github/workflows/issue-to-terraform-dry-run.yml to validate and generate Terraform output without creating a pull request.
 - Jira callback status updates after successful apply in .github/workflows/pingsso-pipeline.yaml, including deployment comment and optional transition.
 
