@@ -85,6 +85,13 @@ Required for JSM-to-Terraform PR automation:
 - `AUTOMATION_GH_TOKEN` - Personal Access Token (classic) with `repo` scope, created under a **dedicated bot/service account** (not your personal account). This token creates the PR. The built-in `GITHUB_TOKEN` (github-actions[bot]) then approves it. Both tokens must belong to different actors — GitHub blocks self-approval, so using `GITHUB_TOKEN` for both creation and approval will fail with "Can not approve your own pull request".
 - `AUTOMATION_GITHUB_TOKEN` - Optional alternate secret name supported by the workflow for compatibility. If both are present, `AUTOMATION_GH_TOKEN` is used.
 
+Environment selection for automation workflow:
+
+- `issue-to-terraform-pr.yml` uses GitHub Environment `${{ vars.AUTOMATION_ENVIRONMENT || 'production' }}`.
+- Set repository variable `AUTOMATION_ENVIRONMENT` to choose which environment to use (for example: `development`, `staging`, or `production`).
+- If you store `AUTOMATION_GH_TOKEN` as an **environment secret**, it must exist in the selected environment.
+- If you store `AUTOMATION_GH_TOKEN` as a **repository secret**, it is available regardless of environment.
+
 To create this token:
 1. Create (or use) a GitHub bot/service account separate from your personal account
 2. In that account: Settings → Developer settings → Personal access tokens → Tokens (classic)
@@ -94,6 +101,8 @@ To create this token:
 Troubleshooting:
 - Error `Input token not supplied`: confirm the secret is a **repository secret** (not environment secret), named exactly `AUTOMATION_GH_TOKEN` or `AUTOMATION_GITHUB_TOKEN`, and available to this repository.
 - If your org limits secret visibility, ensure this repository is included in the secret access policy.
+- If your secret is environment-scoped, confirm `AUTOMATION_ENVIRONMENT` points to that same environment name.
+- Error `The process '/usr/bin/git' failed with exit code 128` during `Generate Terraform Change PR`: this is usually an authentication problem with the PR token. Confirm the selected environment has `AUTOMATION_GH_TOKEN` (or `AUTOMATION_GITHUB_TOKEN`), the PAT is active and not expired, and the token owner account has write access to this repository.
 
 Optional for Jira callback automation:
 

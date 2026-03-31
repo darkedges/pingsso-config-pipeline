@@ -16,11 +16,15 @@ jobs:
     name: Generate Terraform Change PR
     if: github.event_name == 'repository_dispatch' || contains(github.event.issue.labels.*.name, 'automated-request')
     runs-on: ubuntu-latest
+    environment: ${{ vars.AUTOMATION_ENVIRONMENT || 'production' }}
     env:
       AUTOMATION_PR_TOKEN: ${{ secrets.AUTOMATION_GH_TOKEN || secrets.AUTOMATION_GITHUB_TOKEN }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ env.AUTOMATION_PR_TOKEN || github.token }}
+          fetch-depth: 0
 
       - name: Parse Issue Request
         id: parse
@@ -233,13 +237,22 @@ jobs:
             } > "$FILE_PATH"
           fi
 
+      - name: Validate Automation Token
+        shell: bash
+        run: |
+          if [ -z "${AUTOMATION_PR_TOKEN}" ]; then
+            echo "::error::Missing automation token. Set repository/environment secret AUTOMATION_GH_TOKEN (preferred) or AUTOMATION_GITHUB_TOKEN."
+            echo "::error::This token must be a bot/service account PAT (classic) with repo scope."
+            exit 1
+          fi
+
       - name: Create or Update Pull Request
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           # AUTOMATION_GH_TOKEN must be a PAT from a bot/service account.
           # It cannot be github.token — the PR creator and approver must be different actors.
-          token: ${{ secrets.AUTOMATION_GH_TOKEN }}
+          token: ${{ env.AUTOMATION_PR_TOKEN }}
           commit-message: "chore(terraform): apply JSM request #${{ steps.parse.outputs.issue_number }}"
           branch: ${{ steps.parse.outputs.branch_name }}
           title: "Automated Terraform change for JSM request #${{ steps.parse.outputs.issue_number }}"
@@ -273,7 +286,7 @@ jobs:
         if: steps.cpr.outputs.pull-request-number != ''
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
-          token: ${{ secrets.AUTOMATION_GH_TOKEN }}
+          token: ${{ env.AUTOMATION_PR_TOKEN }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           merge-method: squash
 
