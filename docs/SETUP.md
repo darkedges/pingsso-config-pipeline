@@ -98,11 +98,29 @@ To create this token:
 3. Generate a new token with `repo` scope
 4. Add it as a repository secret named `AUTOMATION_GH_TOKEN` (preferred): Settings → Secrets and variables → Actions → Secrets
 
+Fine-grained PAT option (instead of classic PAT):
+
+If you use a fine-grained PAT for `AUTOMATION_GH_TOKEN`, configure it with:
+- Repository access: this repository
+- Repository permissions:
+   - Contents: Read and write
+   - Pull requests: Read and write
+   - Metadata: Read
+
+Also required:
+- The bot account must have Write (or higher) access to the repository
+- If your org enforces SSO, authorize the PAT for the organization
+
 Troubleshooting:
 - Error `Input token not supplied`: confirm the secret is a **repository secret** (not environment secret), named exactly `AUTOMATION_GH_TOKEN` or `AUTOMATION_GITHUB_TOKEN`, and available to this repository.
 - If your org limits secret visibility, ensure this repository is included in the secret access policy.
 - If your secret is environment-scoped, confirm `AUTOMATION_ENVIRONMENT` points to that same environment name.
 - Error `The process '/usr/bin/git' failed with exit code 128` during `Generate Terraform Change PR`: this is usually an authentication problem with the PR token. Confirm the selected environment has `AUTOMATION_GH_TOKEN` (or `AUTOMATION_GITHUB_TOKEN`), the PAT is active and not expired, and the token owner account has write access to this repository.
+- Error `Permission to <owner>/<repo>.git denied to <bot-user>` with HTTP 403: the bot account exists but does not have repository write access. Fix by:
+   1. Add the bot account as a collaborator (or team member) with **Write** access to the repository.
+   2. Ensure the bot account accepts the repository invitation.
+   3. Recreate or verify PAT scope (`repo` for classic PAT).
+   4. If the repository is under an org with SSO enforcement, authorize the PAT for that org.
 
 Optional for Jira callback automation:
 

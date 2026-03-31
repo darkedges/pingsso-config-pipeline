@@ -78,10 +78,22 @@ jobs:
               if (!cleaned || cleaned.toLowerCase() === 'none provided') {
                 return [];
               }
+
+              function cleanToken(token) {
+                return String(token || '')
+                  .trim()
+                  .replace(/^[-*]\s+/, '')
+                  .replace(/^\[+/, '')
+                  .replace(/\]+$/, '')
+                  .replace(/^"+|"+$/g, '')
+                  .replace(/^'+|'+$/g, '')
+                  .trim();
+              }
+
               return [...new Set(
                 cleaned
                   .split(/\r?\n|,/)
-                  .map(v => v.trim())
+                  .map(v => cleanToken(v))
                   .filter(Boolean)
               )];
             }
@@ -245,6 +257,25 @@ jobs:
             echo "::error::This token must be a bot/service account PAT (classic) with repo scope."
             exit 1
           fi
+
+      - name: Validate Automation Token Repository Access
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ env.AUTOMATION_PR_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const repository = await github.rest.repos.get({ owner, repo });
+            const canPush = Boolean(repository.data?.permissions?.push);
+
+            if (!canPush) {
+              core.setFailed(
+                `AUTOMATION_PR_TOKEN cannot push to ${owner}/${repo}. ` +
+                'Grant the bot account Write access (or higher) to this repository and ensure the PAT is authorized for org SSO if required.'
+              );
+              return;
+            }
+
+            core.info(`Automation token has push access to ${owner}/${repo}.`);
 
       - name: Create or Update Pull Request
         id: cpr
