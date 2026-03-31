@@ -131,23 +131,11 @@ jobs:
       - name: Create GitHub Issue
         id: create_issue
         uses: actions/github-script@v7
-        env:
-          TEAM: ${{ github.event.client_payload.fields.team_name }}
-          APP: ${{ github.event.client_payload.fields.app_name }}
-          APP_TYPE: ${{ github.event.client_payload.fields.app_type }}
-          SAML_ENTITY_ID: ${{ github.event.client_payload.fields.saml_entity_id }}
-          SAML_ACS_URL: ${{ github.event.client_payload.fields.saml_acs_url }}
-          OIDC_GRANT_TYPES: ${{ github.event.client_payload.fields.oidc_grant_types }}
-          DEV: ${{ github.event.client_payload.fields.dev_redirect_uris }}
-          TEST: ${{ github.event.client_payload.fields.test_redirect_uris }}
-          STAGE: ${{ github.event.client_payload.fields.stage_redirect_uris }}
-          PROD: ${{ github.event.client_payload.fields.prod_redirect_uris }}
-          JIRA_URL: ${{ github.event.client_payload.jsm_url }}
-          ISSUE_KEY: ${{ github.event.client_payload.issue_key }}
-          REPORTER: ${{ github.event.client_payload.reporter }}
-          SUMMARY: ${{ github.event.client_payload.summary }}
         with:
           script: |
+            const payload = context.payload.client_payload || {};
+            const fields = payload.fields || {};
+
             function normalizeListLike(value) {
               const cleanToken = (token) => String(token || '')
                 .trim()
@@ -197,20 +185,20 @@ jobs:
               return items.length ? items[0] : fallback;
             }
 
-            const team    = asSingleValue(process.env.TEAM);
-            const app     = asSingleValue(process.env.APP);
-            const appType = asSingleValue(process.env.APP_TYPE);
-            const samlEntityId = asSingleValue(process.env.SAML_ENTITY_ID);
-            const samlAcsUrl = asSingleValue(process.env.SAML_ACS_URL);
-            const oidcGrantTypes = asMarkdownList(process.env.OIDC_GRANT_TYPES);
-            const dev     = asMarkdownList(process.env.DEV);
-            const test    = asMarkdownList(process.env.TEST);
-            const stage   = asMarkdownList(process.env.STAGE);
-            const prod    = asMarkdownList(process.env.PROD);
-            const jiraUrl = process.env.JIRA_URL;
-            const issueKey = process.env.ISSUE_KEY || 'UNKNOWN';
-            const reporter = process.env.REPORTER || 'Unknown reporter';
-            const summary  = process.env.SUMMARY || 'No summary provided';
+            const team    = asSingleValue(fields.team_name);
+            const app     = asSingleValue(fields.app_name);
+            const appType = asSingleValue(fields.app_type);
+            const samlEntityId = asSingleValue(fields.saml_entity_id);
+            const samlAcsUrl = asSingleValue(fields.saml_acs_url);
+            const oidcGrantTypes = asMarkdownList(fields.oidc_grant_types);
+            const dev     = asMarkdownList(fields.dev_redirect_uris);
+            const test    = asMarkdownList(fields.test_redirect_uris);
+            const stage   = asMarkdownList(fields.stage_redirect_uris);
+            const prod    = asMarkdownList(fields.prod_redirect_uris);
+            const jiraUrl = payload.jsm_url || 'No JIRA URL provided';
+            const issueKey = payload.issue_key || 'UNKNOWN';
+            const reporter = payload.reporter || 'Unknown reporter';
+            const summary  = payload.summary || 'No summary provided';
 
             const body = [
               '### Jira Issue Key',
