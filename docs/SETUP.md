@@ -144,7 +144,7 @@ Set these in your repository settings (Settings → Secrets and variables → Ac
 Optional for Jira callback automation:
 
 - `JIRA_BASE_URL` - Jira tenant base URL (e.g., `https://company.atlassian.net`)
-- `JIRA_DONE_TRANSITION_NAME` - Transition name to move ticket after successful apply (e.g., `Done`)
+- `JIRA_DONE_TRANSITION_NAME` - Preferred transition name to move ticket after successful apply (e.g., `Done`). Matching is case-insensitive. If no exact name is found, automation falls back to the first transition whose target status category is `done`.
 
 ### GitHub Repository Action Permissions
 

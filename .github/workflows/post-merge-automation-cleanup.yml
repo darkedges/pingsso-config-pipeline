@@ -177,12 +177,19 @@ jobs:
 
           cp jira-transitions-response.json transitions.json
 
-          TRANSITION_ID=$(jq -r --arg name "$JIRA_DONE_TRANSITION_NAME" '.transitions[] | select(.name == $name) | .id' transitions.json | head -n 1)
+          AVAILABLE_TRANSITIONS=$(jq -r '[.transitions[].name] | join(", ")' transitions.json)
+          TRANSITION_ID=$(jq -r --arg name "$JIRA_DONE_TRANSITION_NAME" '.transitions[] | select((.name | ascii_downcase) == ($name | ascii_downcase)) | .id' transitions.json | head -n 1)
+          USED_TRANSITION_NAME="$JIRA_DONE_TRANSITION_NAME"
 
           if [ -z "$TRANSITION_ID" ]; then
-            echo "No Jira transition named '$JIRA_DONE_TRANSITION_NAME' found. Skipping transition."
+            TRANSITION_ID=$(jq -r '.transitions[] | select(.to.statusCategory.key == "done") | .id' transitions.json | head -n 1)
+            USED_TRANSITION_NAME=$(jq -r '.transitions[] | select(.to.statusCategory.key == "done") | .name' transitions.json | head -n 1)
+          fi
+
+          if [ -z "$TRANSITION_ID" ]; then
+            echo "No matching Jira transition found. Configured: '$JIRA_DONE_TRANSITION_NAME'. Available transitions: $AVAILABLE_TRANSITIONS"
             echo "status=skipped" >> "$GITHUB_OUTPUT"
-            echo "message=No Jira transition named '$JIRA_DONE_TRANSITION_NAME' was found." >> "$GITHUB_OUTPUT"
+            echo "message=No matching Jira transition found. Configured '$JIRA_DONE_TRANSITION_NAME'. Available: $AVAILABLE_TRANSITIONS" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -207,7 +214,7 @@ jobs:
           fi
 
           echo "status=completed" >> "$GITHUB_OUTPUT"
-          echo "message=Transitioned Jira issue $JIRA_KEY using transition '$JIRA_DONE_TRANSITION_NAME'." >> "$GITHUB_OUTPUT"
+          echo "message=Transitioned Jira issue $JIRA_KEY using transition '$USED_TRANSITION_NAME'." >> "$GITHUB_OUTPUT"
 
       - name: Comment Issue with Jira callback status
         if: always()
