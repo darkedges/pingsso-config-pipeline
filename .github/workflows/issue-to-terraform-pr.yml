@@ -16,6 +16,8 @@ jobs:
     name: Generate Terraform Change PR
     if: github.event_name == 'repository_dispatch' || contains(github.event.issue.labels.*.name, 'automated-request')
     runs-on: ubuntu-latest
+    env:
+      AUTOMATION_PR_TOKEN: ${{ secrets.AUTOMATION_GH_TOKEN || secrets.AUTOMATION_GITHUB_TOKEN }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
